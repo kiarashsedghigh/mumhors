@@ -12,7 +12,6 @@ struct row {
     vec_t data;         /* The pointer to the actual data of row */
 };
 
-
 /// Bitmap structure
 typedef struct bitmap {
     /* Hyperparameters of bitmap structure */
@@ -51,6 +50,15 @@ void bitmap_display(bitmap_t *bm);
 /// \param bm Pointer to the bitmap structure
 void bitmap_allocate_new_row(bitmap_t *bm);
 
+/// Remove a row from the bitmap matrix based on its index
+/// \param bm Pointer to the bitmap structure
+/// \param index The index of the row
 void bitmap_remove_row(bitmap_t *bm, int index);
+
+/// Unset bit index in the specified window
+/// \param bm Pointer to the bitmap structure
+/// \param index Bit index to be unset
+/// \param windows_size The windows size defines the number of first 1s in the matrix
+void bitmap_unset_index_in_window(bitmap_t *bm, int index, int windows_size);
 
 #endif

@@ -5,6 +5,13 @@
 #include <assert.h>
 #include <stdio.h>
 
+/// Freeing a row of bitmap
+/// \param row Pointer to the row
+static void bitmap_free_row(row_t row) {
+    free(row->data);
+    free(row);
+}
+
 ///// Counts number of bits set in the given number
 ///// \param num Given number
 ///// \return Number of set bits
@@ -17,24 +24,24 @@ static int count_num_set_bits(int num) {
     return cnt;
 }
 
-///// Set a 0-based index of an bit array
-///// \param array Pointer to the bit array
-///// \param index 0-based index
-//static void bitarray_set(vec_t array, int index) {
-//    int byte_number = index / 8;
-//    int bit_number = index % 8;
-//    array[byte_number] |= 1 << (8 - bit_number - 1);
-//}
-//
-///// Unsetting a 0-based index of an bit array
-///// \param array Pointer to the bit array
-///// \param index 0-based index
-//static void bitarray_unset(vec_t array, int index) {
-//    int byte_number = index / 8;
-//    int bit_number = index % 8;
-//    array[byte_number] &= 0xff - (1 << (8 - bit_number - 1));
-//}
-
+/// Returns the bit index of the nth set bit of the given byte
+/// \param byte A given byte
+/// \param nth Nth set bit
+/// \return Bit index of the nth set bit of the given byte
+static int byte_get_index_nth_set(unsigned char byte, int nth) {
+    int bit_idx = 0;
+    nth -= 1;   // Converting nth to 0-based index
+    while (nth >= 0) {
+        while ((byte & 128) != 128) {
+            bit_idx++;
+            byte <<= 1;
+        }
+        byte <<= 1;
+        bit_idx++;
+        nth--;
+    }
+    return bit_idx-1;
+}
 
 void bitmap_init(bitmap_t *bm, int rows, int cols, int init_rows, int row_threshold) {
     /* Simple parameter check. This check has been done in this way for simplicity!! */
@@ -47,7 +54,7 @@ void bitmap_init(bitmap_t *bm, int rows, int cols, int init_rows, int row_thresh
     bm->cB = cols / 8;
     bm->ir = init_rows;
     bm->rt = row_threshold;
-    bm->next_row_number = bm->ir;  
+    bm->next_row_number = bm->ir;
     bm->active_rows = bm->ir;
     bm->num_ones_in_active_rows = bm->ir * bm->cB * 8;
 
@@ -62,7 +69,7 @@ void bitmap_init(bitmap_t *bm, int rows, int cols, int init_rows, int row_thresh
 
         /* Initializing the vector to all 1s */
         for (int j = 0; j < bm->cB; j++) r->data[j] = 0xff;
-        
+
         /* Adding the row to the matrix */
         cq_enqueue(&bm->bitmap_matrix, (void *) r);
     }
@@ -72,7 +79,7 @@ void bitmap_delete(bitmap_t *bm) {
     /* Deleting the rows data */
     cq_iter_next(NULL);
     row_t row;
-    while((row= cq_iter_next(&bm->bitmap_matrix))) { free(row->data);}
+    while ((row = cq_iter_next(&bm->bitmap_matrix))) { bitmap_free_row(row); }
 
     cq_delete(&bm->bitmap_matrix);
 }
@@ -90,10 +97,9 @@ void bitmap_display(bitmap_t *bm) {
 
 
 void bitmap_allocate_new_row(bitmap_t *bm) {
-
     /* Check if allocating a new row will pass the threshold of active rows */
     if (bm->active_rows + 1 > bm->rt)
-        debug("Threshold Reached\n",DEBUG_WARNING);
+        debug("Threshold Reached\n", DEBUG_WARNING);
 
     if (bm->active_rows + 1 > bm->r) {
         debug("No more rows to allocate\n", DEBUG_ERR);
@@ -118,27 +124,50 @@ void bitmap_allocate_new_row(bitmap_t *bm) {
 
 }
 
-//void bitmap_remove_row(bitmap_t * bm, int index) {
-//    assert(index >= 0 && index < bm->active_rows);
-//
-//    /* Removing the row from the circular queue */
-//    // Get the actual row number
-//    int row_number = bitarray_get_index_nth_set(bm->row_track, bm->row_track_size,index+1); //tODO
-//
-//    printf(">>%d\n", row_number);
-//
-//    /* Unset the row in the row_track vector */
-//    bitarray_unset(bm->row_track, row_number);
-//
-//
-//    // Removing the row from the queue
-//    cq_remove_row_by_index(&bm->bitmap_matrix, index);
-//
-//    /* Updating the hyper parameters */
-//    bm->active_rows--;
-//
-//    //TODO count active 1s in this row for the case that we reach threshold case
-//}
+void bitmap_remove_row(bitmap_t *bm, int index) {
+    assert(index >= 0 && index < bm->active_rows);
+
+    /* Deallocate the row */
+    row_t row = cq_get_row_by_index(&bm->bitmap_matrix, index);
+    bitmap_free_row(row);
+
+    /* Removing the row from the circular queue */
+    cq_remove_row_by_index(&bm->bitmap_matrix, index);
+
+    /* Updating the hyperparameters */
+    bm->active_rows--;
+}
+
+
+void bitmap_unset_index_in_window(bitmap_t *bm, int index, int windows_size) {
+    assert(index<windows_size);
+
+    /* If there are not enough ones in the current window, add a new row */
+    if (windows_size > bm->num_ones_in_active_rows) {
+        bitmap_allocate_new_row(bm);
+    }
+
+    cq_iter_next(NULL);
+    row_t row;
+
+    while ((row = cq_iter_next(&bm->bitmap_matrix))) {
+        for (int j = 0; j < bm->cB; j++) {
+            if (row->data[j] != 0) { // Skip 0 bytes
+                int cnt_ones = count_num_set_bits(row->data[j]);
+                if (cnt_ones > index) {
+                    int bit_idx = byte_get_index_nth_set(row->data[j], index+1);
+                    row->data[j] &= 0xff - (1 << (8 - bit_idx - 1));
+                    goto end;
+                } else
+                    index -= cnt_ones;
+            }
+        }
+    }
+    end:
+    bm->num_ones_in_active_rows--;
+}
+
+
 
 //
 //
