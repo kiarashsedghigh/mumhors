@@ -5,10 +5,14 @@ set(CMAKE_CXX_STANDARD 14)
 
 include_directories(src/utils)
 
+add_compile_options(-O3)
+
 add_executable(muhors
         src/utils/cqueue.c
         src/utils/cqueue.h
         README.md
         main.c
         src/utils/bitmap.c
-        src/utils/bitmap.h)
+        src/utils/bitmap.h
+        src/utils/debug.c
+        src/utils/debug.h)
