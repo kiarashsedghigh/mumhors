@@ -15,4 +15,6 @@ add_executable(muhors
         src/utils/bitmap.c
         src/utils/bitmap.h
         src/utils/debug.c
-        src/utils/debug.h)
+        src/utils/debug.h
+        src/utils/sort.c
+        src/utils/sort.h)

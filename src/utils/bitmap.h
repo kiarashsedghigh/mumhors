@@ -26,7 +26,15 @@ struct bit_object{
 struct row {
     int row_number;     /* Row number */
     vec_t data;         /* The pointer to the actual data of row */
+    row_t next;         /* Pointer to the next row in the list */
 };
+
+/// Bitmap matrix containing the rows of the bitmap matrix
+typedef struct bitmap_matrix{
+    row_t head;
+    row_t tail;
+}bitmap_matrix_t;
+
 
 /// Bitmap structure
 typedef struct bitmap {
@@ -39,7 +47,9 @@ typedef struct bitmap {
     int active_rows;    /* Number of active rows */
     int num_ones_in_active_rows; /* Number of set bits in the active rows */
 
-    cqueue_t bitmap_matrix;  /* The matrix of rows (circular queue) containing the rows */
+//    cqueue_t bitmap_matrix;  /* The matrix of rows (circular queue) containing the rows */
+    bitmap_matrix_t bitmap_matrix; /* The matrix of rows (linked list) containing the rows */
+
     bitmap_rowcom_t compressed_rows;  /* A linked list of bits from compressed rows */
 } bitmap_t;
 
@@ -63,9 +73,9 @@ void bitmap_unset(bitmap_t *bm, int index);
 /// \param bm Pointer to the bitmap structure
 void bitmap_display(bitmap_t *bm);
 
-/// Allocate a new row and adds it to the bitmap matrix
+/// Allocate more new rows
 /// \param bm Pointer to the bitmap structure
-void bitmap_allocate_new_row(bitmap_t *bm);
+void bitmap_allocate_more_row(bitmap_t *bm);
 
 /// Remove a row from the bitmap matrix based on its index
 /// \param bm Pointer to the bitmap structure
@@ -74,10 +84,9 @@ void bitmap_remove_row(bitmap_t *bm, int index);
 
 /// Unset bit index in the specified window
 /// \param bm Pointer to the bitmap structure
-/// \param index Bit index to be unset
+/// \param indices Array of indices to be unset
 /// \param windows_size The windows size defines the number of first 1s in the matrix
-void bitmap_unset_index_in_window(bitmap_t *bm, int index, int windows_size);
-
+void bitmap_unset_index_in_window(bitmap_t *bm, int * indices, int num_index, int windows_size);
 
 // For debugging still here
 void bitmap_rowcompressor_addnode(bitmap_rowcom_t * bmrcom, int row, int col);
