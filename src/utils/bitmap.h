@@ -89,6 +89,6 @@ void bitmap_remove_row(bitmap_t *bm, int index);
 void bitmap_unset_index_in_window(bitmap_t *bm, int * indices, int num_index, int windows_size);
 
 // For debugging still here
-void bitmap_rowcompressor_addnode(bitmap_rowcom_t * bmrcom, int row, int col);
 void bitmap_rowcompressor_display(bitmap_rowcom_t * bmrcom);
+
 #endif

@@ -6,6 +6,23 @@
 #include <assert.h>
 #include <stdio.h>
 
+// Debugging
+
+int cnt_cleanup_call = 0;
+int cnt_alloc_more_rows = 0;
+int cnt_row_compression = 0;
+int cnt_count_unset = 0;
+
+static void report(){
+    printf("REPORT: \n-------------------\n");
+    printf("Cleanup calls: %d\n", cnt_cleanup_call);
+    printf("Compression calls: %d\n", cnt_row_compression);
+    printf("Alloc calls: %d\n", cnt_alloc_more_rows);
+    printf("Unset calls: %d\n", cnt_count_unset);
+
+}
+
+
 /// Returns the minimum of two integers
 /// \param x First integer
 /// \param y Second integer
@@ -73,7 +90,7 @@ static void bitmap_rowcompressor_init(bitmap_rowcom_t * bmrcom, int total_nodes)
     bmrcom->tail = NULL;
 }
 
-void bitmap_rowcompressor_addnode(bitmap_rowcom_t * bmrcom, int row, int col){
+static void bitmap_rowcompressor_addnode(bitmap_rowcom_t * bmrcom, int row, int col){
     bitobj_t * new_bitobj = malloc(sizeof(bitobj_t));
     new_bitobj->row = row;
     new_bitobj->col = col;
@@ -86,7 +103,6 @@ void bitmap_rowcompressor_addnode(bitmap_rowcom_t * bmrcom, int row, int col){
         bmrcom->tail->next = new_bitobj;
         bmrcom->tail = new_bitobj;
     }
-
     bmrcom->current_nodes++;
 }
 
@@ -97,7 +113,6 @@ void bitmap_rowcompressor_removenode(bitmap_rowcom_t * bmrcom, int index){
         bmrcom->head = bmrcom->head->next;
         temp->next = NULL;
 
-        printf("DELETED NODE: i: %d j: %d\n", temp->row, temp->col);
         /* Deallocate the node */
         free(temp);
     }
@@ -107,9 +122,6 @@ void bitmap_rowcompressor_removenode(bitmap_rowcom_t * bmrcom, int index){
         bitobj_t * target = temp->next;
         temp->next = temp->next->next;
         target->next = NULL;
-
-        printf("DELETED NODE: i: %d j: %d\n", target->row, target->col);
-
 
         /* Deallocate the node */
         free(target);
@@ -153,10 +165,6 @@ void bitmap_init(bitmap_t *bm, int rows, int cols, int init_rows, int row_thresh
     bm->active_rows = bm->ir;
     bm->num_ones_in_active_rows = bm->ir * bm->cB * 8;
 
-//    /* Initializing the matrix of rows (the circular queue). The number of rows it supports, is
-//     * defined by the threshold row number */
-//    cq_init(&bm->bitmap_matrix, bm->rt);
-
     /* Initializing the matrix of rows (the linked list). */
     bm->bitmap_matrix.head=NULL;
     bm->bitmap_matrix.tail=NULL;
@@ -172,7 +180,6 @@ void bitmap_init(bitmap_t *bm, int rows, int cols, int init_rows, int row_thresh
         for (int j = 0; j < bm->cB; j++) new_row->data[j] = 0xff;
 
         /* Adding the row to the matrix */
-//        cq_enqueue(&bm->bitmap_matrix, (void *) r);
         bitmap_matrix_list_add_row(&bm->bitmap_matrix, new_row);
     }
 
@@ -181,9 +188,6 @@ void bitmap_init(bitmap_t *bm, int rows, int cols, int init_rows, int row_thresh
 
 void bitmap_delete(bitmap_t *bm) {
     /* Deleting the rows data */
-//    cq_iter_next(NULL);
-//    row_t row;
-//    while ((row = cq_iter_next(&bm->bitmap_matrix))) { bitmap_free_row(row); }
     row_t curr = bm->bitmap_matrix.head;
     while(curr){
         row_t target = curr;
@@ -203,21 +207,12 @@ void bitmap_delete(bitmap_t *bm) {
     bm->compressed_rows.head=NULL;
     bm->compressed_rows.tail=NULL;
     bm->compressed_rows.total_size=0;
-
-//    cq_delete(&bm->bitmap_matrix);
 }
 
 void bitmap_display(bitmap_t *bm) {
-//    cq_iter_next(NULL);
-//
-//    for (int i = 0; i < bm->active_rows; i++) {
-//        row_t r = cq_iter_next(&bm->bitmap_matrix);
-//        for (int j = 0; j < bm->cB; j++)
-//            printf("%d ", r->data[j]);
-//        printf("\n");
-//    }
     row_t row = bm->bitmap_matrix.head;
     while(row){
+        printf("> ");
         for (int j = 0; j < bm->cB; j++)
             printf("%d ", row->data[j]);
         printf("\n");
@@ -225,57 +220,41 @@ void bitmap_display(bitmap_t *bm) {
     }
 }
 
-
-
-void bitmap_remove_row(bitmap_t *bm, int index) {
-    assert(index >= 0 && index < bm->active_rows);
-
-    /* Deallocate the row */
-//    row_t row = cq_get_row_by_index(&bm->bitmap_matrix, index);
-//    bitmap_free_row(row);
-
-    /* Removing the row from the circular queue */
-//    cq_remove_row_by_index(&bm->bitmap_matrix, index);
-
-
-    row_t temp = bm->bitmap_matrix.head;
-
-    if (index == 0) {
-        bm->bitmap_matrix.head = bm->bitmap_matrix.head->next;
-        temp->next = NULL;
-
-        /* Deallocate the row */
-        bitmap_free_row(temp);
-    }
-    else {
-        for(int i=0; i<index-1; i++)
-            temp=temp->next;
-        row_t target = temp->next;
-        temp->next = temp->next->next;
-        target->next = NULL;
-
-        /* Deallocate the row */
-        bitmap_free_row(target);
-    }
-
-    /* Updating the hyperparameters */
-    bm->active_rows--;
-}
-
 static int bitmap_row_cleanup(bitmap_t *bm){
     int cleaned_rows = 0;
     int row_index = 0;
     row_t r = bm->bitmap_matrix.head;
+
     while(r){
         if(is_row_all_unset(r, bm->cB)) {
-            bitmap_remove_row(bm, row_index);
+            row_t target_to_delete;
+
+            if (row_index == 0) {
+                bm->bitmap_matrix.head = bm->bitmap_matrix.head->next;
+                target_to_delete = r;
+                r=r->next;
+            }
+            else {
+                row_t temp = bm->bitmap_matrix.head;
+                while(temp->next!=r)
+                    temp=temp->next;
+
+                target_to_delete = r;
+                r=r->next;
+                temp->next = r;
+
+            }
+            /* Deallocate the row */
+            bitmap_free_row(target_to_delete);
+
             bm->active_rows--;
             cleaned_rows++;
-        }
+        }else
+            r=r->next;
 
         row_index++;
-        r=r->next;
     }
+
     return cleaned_rows;
 }
 
@@ -284,20 +263,23 @@ void bitmap_allocate_more_row(bitmap_t *bm) {
 
     if (bm->next_row_number == bm->r) {
         debug("No more rows to allocate\n", DEBUG_ERR);
+        report();
         exit(-1);
     }
 
     /* Check if allocating a new row will pass the threshold of active rows */
     if (bm->active_rows + 1 > bm->rt) {
-        debug("Threshold Reached\n", DEBUG_WARNING);
+//        debug("Threshold Reached\n", DEBUG_WARNING);
+        cnt_cleanup_call++;
 
         /* Perform a cleanup. Compress rows if no row was deleted */
         if (!bitmap_row_cleanup(bm)){
-            printf("NO clean up");
+            cnt_row_compression++;
 
             /* Compress the rows into a list of nodes */
             if (bm->num_ones_in_active_rows > (bm->compressed_rows.total_size - bm->compressed_rows.current_nodes)){
                 debug("Cannot compress as we don't have enough space in the compressor list\n", DEBUG_ERR);
+                report();
                 exit(-1);
             }
 
@@ -326,37 +308,11 @@ void bitmap_allocate_more_row(bitmap_t *bm) {
 
             bm->bitmap_matrix.head=NULL;
             bm->bitmap_matrix.tail=NULL;
-
-//            cq_iter_next(NULL);
-//            row_t row;
-//            while ((row = cq_iter_next(&bm->bitmap_matrix))) {
-//                int column_idx = 0;
-//                for (int j = 0; j < bm->cB; j++) {
-//                    if (row->data[j] != 0) { // Skip 0 bytes
-//                        /* Loop around bytes and add the row and column of the bit indices that are set */
-//                        unsigned char cur_byte = row->data[j];
-//                        while(cur_byte){
-//                            if ((cur_byte & 128) == 128)
-//                                bitmap_rowcompressor_addnode(&bm->compressed_rows, row->row_number, column_idx);
-//                            cur_byte <<= 1;
-//                            column_idx++;
-//                        }
-//                    }else
-//                        column_idx += 8;
-//                }
-//            }
-            bitmap_rowcompressor_display(&bm->compressed_rows);
-
-            /* Empty the current list */
-
-
         }
-
     }
 
     /* Possible number of rows to allocate */
     int possible_number_of_rows = min(bm->rt-bm->active_rows, bm->r - bm->next_row_number);
-
 
     /* Fill the matrix with more rows */
     for(int i=0;i<possible_number_of_rows;i++) {
@@ -376,10 +332,10 @@ void bitmap_allocate_more_row(bitmap_t *bm) {
 
         /* Add the row to the matrix */
         bitmap_matrix_list_add_row(&bm->bitmap_matrix, new_row);
-//    cq_enqueue(&bm->bitmap_matrix, new_row);
     }
     /* Reset number of ones in active rows */
     bm->num_ones_in_active_rows = possible_number_of_rows * bm->cB * 8;
+
 }
 
 
@@ -387,9 +343,11 @@ void bitmap_unset_index_in_window(bitmap_t *bm, int * indices, int num_index, in
 
     /* If there are not enough ones in the current window, add a new row. The active ones are
      * the all nodes in the compressed linked list and the active ones in the matrix */
-    if (windows_size > bm->num_ones_in_active_rows + bm->compressed_rows.current_nodes)
-        bitmap_allocate_more_row(bm);
 
+    if (windows_size > bm->num_ones_in_active_rows + bm->compressed_rows.current_nodes){
+        bitmap_allocate_more_row(bm);
+        cnt_alloc_more_rows++;
+    }
 
     /* Sort the indices.
      * Description:
@@ -400,6 +358,12 @@ void bitmap_unset_index_in_window(bitmap_t *bm, int * indices, int num_index, in
     for(int i=0; i<num_index; i++){
         int target_index = indices[i] - index_diff;
         index_diff++;
+
+        if(i>0 && indices[i]==indices[i-1]){
+            index_diff--;
+            target_index++;
+        }
+//        printf("%d\n",target_index);
 
         /* Check if the target index belongs to the compressed rows */
         if (target_index < bm->compressed_rows.current_nodes){
@@ -428,29 +392,10 @@ void bitmap_unset_index_in_window(bitmap_t *bm, int * indices, int num_index, in
                 row=row->next;
             }
             end:
+            bm->num_ones_in_active_rows--;
         }
     }
+    cnt_count_unset++;
 
-
-//    cq_iter_next(NULL);
-//    row_t row;
-//    int row_index = 0;
-//
-//    while ((row = cq_iter_next(&bm->bitmap_matrix))) {
-//        for (int j = 0; j < bm->cB; j++) {
-//            if (row->data[j] != 0) { // Skip 0 bytes
-//                int cnt_ones = count_num_set_bits(row->data[j]);
-//                if (cnt_ones > index) {
-//                    int bit_idx = byte_get_index_nth_set(row->data[j], index + 1);
-//                    row->data[j] &= 0xff - (1 << (8 - bit_idx - 1));
-//                    goto end;
-//                } else
-//                    index -= cnt_ones;
-//            }
-//        }
-//        row_index++;
-//    }
-//    end:
-//    bm->num_ones_in_active_rows--;
 }
 
