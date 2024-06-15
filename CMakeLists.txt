@@ -5,9 +5,8 @@ set(CMAKE_CXX_STANDARD 14)
 
 include_directories(src/utils)
 
-add_compile_options(-O3)
+add_compile_options(-O3 -w)
 
-add_definitions(-DJOURNAL)
 # Add executable
 add_executable(muhors
         src/utils/cqueue.c

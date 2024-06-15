@@ -41,7 +41,9 @@ int main(int argc, char ** argv){
             printf("---> Last covered message: %d\n", i);
 
             debug("No more rows to allocate", DEBUG_ERR);
+#ifdef JOURNAL
             bitmap_report(&bm);
+#endif
             bitmap_delete(&bm);
             exit(1);
         }
