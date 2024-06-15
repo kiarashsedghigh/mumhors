@@ -14,19 +14,26 @@ void generate_rands(int * arr, int k, int t){
 
 int main(int argc, char ** argv){
     int t, k , l , ir, rt , tests;
-    if (argc<7){
-        printf("|HELP|\n\tRun:\n");
-        printf("\t\t muhors T K L IR RT TESTS\n");
-        exit(1);
-    }
+//    if (argc<7){
+//        printf("|HELP|\n\tRun:\n");
+//        printf("\t\t muhors T K L IR RT TESTS\n");
+//        exit(1);
+//    }
+//
+//    //TODO atoi is deprecated
+//    t= atoi(argv[1]);
+//    k= atoi(argv[2]);
+//    l= atoi(argv[3]);
+//    ir= atoi(argv[4]);
+//    rt= atoi(argv[5]);
+//    tests= atoi(argv[6]);
 
-    //TODO atoi is deprecated
-    t= atoi(argv[1]);
-    k= atoi(argv[2]);
-    l= atoi(argv[3]);
-    ir= atoi(argv[4]);
-    rt= atoi(argv[5]);
-    tests= atoi(argv[6]);
+    t=1024;
+    k=16;
+    l=6;
+    ir=2;
+    rt=4;
+    tests=450;
 
 
     bitmap_t bm;
@@ -49,5 +56,8 @@ int main(int argc, char ** argv){
         }
     }
     debug("Successfully covered all the test cases", DEBUG_INF);
+#ifdef JOURNAL
+    bitmap_report(&bm);
+#endif
     bitmap_delete(&bm);
 }
