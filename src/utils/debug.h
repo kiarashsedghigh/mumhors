@@ -8,7 +8,7 @@
 /// Debug function
 /// \param message Message to be printed as the debug
 /// \param debug_level Level of the debug
-void debug(unsigned char * message, int debug_level);
+void debug(unsigned char message[], int debug_level);
 
 
 #endif

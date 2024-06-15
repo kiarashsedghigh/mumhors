@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.29)
+cmake_minimum_required(VERSION 3.22)
 project(muhors)
 
 set(CMAKE_CXX_STANDARD 14)
@@ -7,6 +7,8 @@ include_directories(src/utils)
 
 add_compile_options(-O3)
 
+add_definitions(-DJOURNAL)
+# Add executable
 add_executable(muhors
         src/utils/cqueue.c
         src/utils/cqueue.h
@@ -17,4 +19,10 @@ add_executable(muhors
         src/utils/debug.c
         src/utils/debug.h
         src/utils/sort.c
-        src/utils/sort.h)
+        src/utils/sort.h
+        src/utils/math.c
+        src/utils/math.h)
+
+# Install header files from src/utils to /usr/include/muhors
+install(DIRECTORY src/utils/ DESTINATION /usr/include/muhors FILES_MATCHING PATTERN "*.h")
+install(TARGETS muhors DESTINATION /usr/bin)

@@ -1,94 +1,81 @@
 #ifndef MUHORS_BITMAP_H
 #define MUHORS_BITMAP_H
 
-#include <muhors/cqueue.h>
+#define BITMAP_MORE_ROW_ALLOCATION_SUCCESS 0
+#define BITMAP_NO_MORE_ROWS_TO_ALLOCATE 1
 
-typedef unsigned char *vec_t;
-typedef struct row *row_t;
-typedef struct bit_object bitobj_t;
+#define BITMAP_UNSET_BITS_SUCCESS 0
+#define BITMAP_UNSET_BITS_FAILED 1
 
-/// A linked lists of bit_object to hold the bits resulted from compressing bitmap matrix
-typedef struct bitmap_rowcompressor_object{
-    int total_size;     /* Total number of allowed nodes to store */
-    int current_nodes;  /* Current number of nodes in  the list */
-    bitobj_t * head;
-    bitobj_t * tail;
-}bitmap_rowcom_t;
 
-/// A struct representing a bit with its row and column indices
-struct bit_object{
-    int row;    /* Bit row index */
-    int col;    /* Bit column index */
-    bitobj_t * next;  /* Pointer to the next bit object */
-};
+#ifdef JOURNAL
+/// A group of journaling information which show the performance of the bitmap
+typedef struct bitmap_journaling{
+    int cnt_cleanup_call;
+    int cnt_alloc_more_rows;
+    int cnt_row_compression;
+    int cnt_count_unset;
+    int cnt_discarded_bits;
+}bitmap_journaling_t;
+#endif
 
-/// Row data structure to represent each row with its number and data
-struct row {
-    int row_number;     /* Row number */
-    vec_t data;         /* The pointer to the actual data of row */
-    row_t next;         /* Pointer to the next row in the list */
-};
+/// Row data structure to represent each row with its meta parameters and data
+typedef struct row {
+    int number;     /* Row number */
+    int set_bits;   /* Number of set bits (1s) in the row */
+    unsigned char *data;         /* The pointer to the bytes of the row */
+    struct row *next;         /* Pointer to the next row in the list */
+}row_t;
 
 /// Bitmap matrix containing the rows of the bitmap matrix
-typedef struct bitmap_matrix{
-    row_t head;
-    row_t tail;
-}bitmap_matrix_t;
-
+typedef struct bitmap_row_matrix {
+    row_t *head;       /* Pointer to the first row of the matrix */
+    row_t *tail;        /* Pointer to the last row of the matrix. Tail pointer is used for fast insertion. */
+} bitmap_row_matrix_t;
 
 /// Bitmap structure
 typedef struct bitmap {
-    /* Hyperparameters of bitmap structure */
     int r;        /* Total number of rows */
     int cB;       /* Total number of columns in terms of Bytes */
     int ir;       /* Initial number of rows to be allocated */
     int rt;        /* Threshold on number of active rows */
     int next_row_number;  /* Row number of the next usable row */
     int active_rows;    /* Number of active rows */
-    int num_ones_in_active_rows; /* Number of set bits in the active rows */
-
-//    cqueue_t bitmap_matrix;  /* The matrix of rows (circular queue) containing the rows */
-    bitmap_matrix_t bitmap_matrix; /* The matrix of rows (linked list) containing the rows */
-
-    bitmap_rowcom_t compressed_rows;  /* A linked list of bits from compressed rows */
+    int set_bits; /* Number of set bits in the active rows */
+    bitmap_row_matrix_t bitmap_matrix;  /* The matrix of rows (linked list) containing the rows */
+#ifdef JOURNAL
+    bitmap_journaling_t bitmap_report;  /* Report of the bitmap execution performance */
+#endif
 } bitmap_t;
 
 /// Initializing the bitmap structure
 /// \param rows Number of rows
 /// \param cols Number of columns in terms of (bits)
-/// \param init_rows Initial number of rows
-/// \param row_threshold Threshold on number of rows
-void bitmap_init(bitmap_t *bm, int rows, int cols, int init_rows, int row_threshold, int row_compressed_list_length);
+/// \param init_rows Initial number of rows to add
+/// \param row_threshold Threshold on number of rows (maximum number of rows at a time)
+void bitmap_init(bitmap_t *bm, int rows, int cols, int init_rows, int row_threshold);
 
 /// Deleting the bitmap structure
 /// \param bm Pointer to the bitmap structure
 void bitmap_delete(bitmap_t *bm);
 
-/// Unset an index in the bitmap
-/// \param bm Pointer to the bitmap structure
-/// \param index Index to be unset
-void bitmap_unset(bitmap_t *bm, int index);
-
-/// Displaying the bitmap
-/// \param bm Pointer to the bitmap structure
-void bitmap_display(bitmap_t *bm);
-
-/// Allocate more new rows
-/// \param bm Pointer to the bitmap structure
-void bitmap_allocate_more_row(bitmap_t *bm);
-
-/// Remove a row from the bitmap matrix based on its index
-/// \param bm Pointer to the bitmap structure
-/// \param index The index of the row
-void bitmap_remove_row(bitmap_t *bm, int index);
-
 /// Unset bit index in the specified window
 /// \param bm Pointer to the bitmap structure
 /// \param indices Array of indices to be unset
 /// \param windows_size The windows size defines the number of first 1s in the matrix
-void bitmap_unset_index_in_window(bitmap_t *bm, int * indices, int num_index, int windows_size);
+/// \return BITMAP_UNSET_BITS_SUCCESS or BITMAP_UNSET_BITS_FAILED
+int bitmap_unset_index_in_window(bitmap_t *bm, int *indices, int num_index, int windows_size);
 
-// For debugging still here
-void bitmap_rowcompressor_display(bitmap_rowcom_t * bmrcom);
+
+#ifdef JOURNAL
+/// Presents a report of the bitmap performance
+/// \param bm Pointer to the bitmap structure
+void bitmap_report(bitmap_t *bm);
+#endif
+
+
+
+// Debug purpose
+void bitmap_display(bitmap_t *bm);
 
 #endif
