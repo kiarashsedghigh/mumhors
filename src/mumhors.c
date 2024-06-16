@@ -1,13 +1,13 @@
-#include <muhors/muhors.h>
-#include <muhors/bitmap.h>
-#include <muhors/sort.h>
+#include <mumhors/mumhors.h>
+#include <mumhors/bitmap.h>
+#include <mumhors/sort.h>
 
 #include <stdlib.h>
 #include <string.h>
 
 unsigned char *dummy_PK = "DUMMY PK";
 
-void muhors_init_signer(muhors_signer_t *signer, unsigned char *seed,
+void mumhors_init_signer(mumhors_signer_t *signer, unsigned char *seed,
                         int t, int k, int ir, int rt, int l) {
     signer->seed = seed;
     signer->t = t;
@@ -20,14 +20,14 @@ void muhors_init_signer(muhors_signer_t *signer, unsigned char *seed,
     bitmap_init(&signer->bm, signer->l, signer->t, signer->rt, signer->t);
 }
 
-void muhors_delete_signer(muhors_signer_t *signer) {
+void mumhors_delete_signer(mumhors_signer_t *signer) {
     bitmap_delete(&signer->bm);
 }
 
 /// Adds a public key node to the list of public keys
-/// \param verifier Pointer to MUHORS verifier struct
+/// \param verifier Pointer to mumhors verifier struct
 /// \param pk Pointer to the public key node struct
-static void muhors_verifier_public_key_node_add(muhors_verifier_t *verifier, public_key_t *pk) {
+static void mumhors_verifier_public_key_node_add(mumhors_verifier_t *verifier, public_key_t *pk) {
     if (verifier->pk_matrix.head == NULL) {
         verifier->pk_matrix.head = pk;
         verifier->pk_matrix.tail = pk;
@@ -37,13 +37,12 @@ static void muhors_verifier_public_key_node_add(muhors_verifier_t *verifier, pub
     }
 }
 
-void muhors_init_verifier(muhors_verifier_t *verifier, int r, int c, int rt, int window_size) {
+void mumhors_init_verifier(mumhors_verifier_t *verifier, int r, int c, int rt, int window_size) {
     verifier->r = r;
     verifier->c = c;
     verifier->rt = rt;
     verifier->active_pks = verifier->rt * verifier->c;
     verifier->windows_size = window_size;
-//    verifier->active_rows = verifier->rt;
     verifier->pk_matrix.head = NULL;
     verifier->pk_matrix.tail = NULL;
     verifier->next_row_number = 0;
@@ -65,14 +64,14 @@ void muhors_init_verifier(muhors_verifier_t *verifier, int r, int c, int rt, int
         pk_node->next = NULL;
 
         /* Add the new public key to the matrix of public keys */
-        muhors_verifier_public_key_node_add(verifier, pk_node);
+        mumhors_verifier_public_key_node_add(verifier, pk_node);
     }
 
     verifier->next_row_number = verifier->rt;
 
 }
 
-void muhors_delete_verifier(muhors_verifier_t *verifier) {
+void mumhors_delete_verifier(mumhors_verifier_t *verifier) {
     public_key_t *pk_row = verifier->pk_matrix.head;
     while (pk_row) {
         for (int i = 0; i < verifier->c; i++)
@@ -86,10 +85,10 @@ void muhors_delete_verifier(muhors_verifier_t *verifier) {
 
 
 /// Invalidates the public keys based on the given indices
-/// \param verifier Pointer to MUHORS verifier struct
+/// \param verifier Pointer to mumhors verifier struct
 /// \param indices List of indices to be invalidated
 /// \param num_indices Number of indices
-void muhors_invalidate_public_pks(muhors_verifier_t *verifier, int * indices, int num_indices) {
+void mumhors_invalidate_public_pks(mumhors_verifier_t *verifier, int * indices, int num_indices) {
     /* First sort the indices */
     merge_sort(indices, 0, num_indices - 1);
 
@@ -128,7 +127,7 @@ void muhors_invalidate_public_pks(muhors_verifier_t *verifier, int * indices, in
     }
 }
 
-static int muhors_verifier_cleanup_rows(muhors_verifier_t *verifier){
+static int mumhors_verifier_cleanup_rows(mumhors_verifier_t *verifier){
     //TODO check tail assignemtn
 
     int cleaned_rows = 0;
@@ -157,7 +156,7 @@ static int muhors_verifier_cleanup_rows(muhors_verifier_t *verifier){
 }
 
 
-static void muhors_verifier_remove_row(muhors_verifier_t *verifier, public_key_t *pk_row){
+static void mumhors_verifier_remove_row(mumhors_verifier_t *verifier, public_key_t *pk_row){
     if (pk_row == verifier->pk_matrix.head)
         verifier->pk_matrix.head = verifier->pk_matrix.head->next;
     else{
@@ -174,13 +173,13 @@ static void muhors_verifier_remove_row(muhors_verifier_t *verifier, public_key_t
 }
 
 
-static void muhors_verifier_alloc_row(muhors_verifier_t *verifier){
+static void mumhors_verifier_alloc_row(mumhors_verifier_t *verifier){
     if (verifier->next_row_number >= verifier->r){
         printf("NO MORE ROW TO ALLOCATE\n");
         exit(1);
     }
 
-    if(!muhors_verifier_cleanup_rows(verifier)){
+    if(!mumhors_verifier_cleanup_rows(verifier)){
         /* No row was cleaned up. We perform the same policy as the signer. */
 
         /* Find the row the fewest number of pks to be deleted */
@@ -196,7 +195,7 @@ static void muhors_verifier_alloc_row(muhors_verifier_t *verifier){
             pk_row=pk_row->next;
         }
         /* The row is found. Delete the row */
-        muhors_verifier_remove_row(verifier, target_row);
+        mumhors_verifier_remove_row(verifier, target_row);
     }
 
     /* Add another row to the window */
@@ -207,10 +206,10 @@ static void muhors_verifier_alloc_row(muhors_verifier_t *verifier){
 
 
 
-void muhors_verify(muhors_verifier_t *verifier, int * indices, int num_indices){
+void mumhors_verify(mumhors_verifier_t *verifier, int * indices, int num_indices){
     if (verifier->windows_size > verifier->active_pks) {
         /* Perform a row allocation */
-        muhors_verifier_alloc_row(verifier);
+        mumhors_verifier_alloc_row(verifier);
     }
 
     for(int i=0;i<num_indices;i++){
@@ -239,12 +238,12 @@ void muhors_verify(muhors_verifier_t *verifier, int * indices, int num_indices){
         }
         printf("\n");
     }
-    muhors_invalidate_public_pks(verifier, indices,num_indices);
+    mumhors_invalidate_public_pks(verifier, indices,num_indices);
 
 }
 
 
-void pk_display(muhors_verifier_t *verifier){
+void pk_display(mumhors_verifier_t *verifier){
     public_key_t *pk_row = verifier->pk_matrix.head;
 
     int cnt_rows_to_show = verifier->rt;

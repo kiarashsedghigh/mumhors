@@ -1,9 +1,9 @@
-#ifndef MUHORS_MUHORS_H
-#define MUHORS_MUHORS_H
-#include <muhors/bitmap.h>
+#ifndef MUMHORS_MUMHORS_H
+#define MUMHORS_MUMHORS_H
+#include <mumhors/bitmap.h>
 
 /// Struct for MUHORS signer
-typedef struct muhors_signer{
+typedef struct mumhors_signer{
     unsigned char * seed;   /* Seed to generate the private keys and signatures */
     int t;                  /* HORS t parameter */
     int k;                  /* HORS k parameter */
@@ -11,7 +11,7 @@ typedef struct muhors_signer{
     int rt;                 /* Bitmap threshold(maximum) rows to allocate */
     int l;                  /* Number of bitmap matrix rows */
     bitmap_t bm;    /* Bitmap for managing the private key utilization */
-}muhors_signer_t;
+}mumhors_signer_t;
 
 
 /// Public key node
@@ -30,7 +30,7 @@ typedef struct public_key_matrix{
 
 
 /// Struct for MUHORS verifier
-typedef struct muhors_verifier{
+typedef struct mumhors_verifier{
     int r;      /* Number of rows in public key matrix (=MUHORS parameter l)*/
     int c;      /* Number of columns in public key matrix (=HORS parameter t)*/
     int rt;     /* Maximum rows to consider in its window */
@@ -39,7 +39,7 @@ typedef struct muhors_verifier{
     int next_row_number; /* Next number for the rows */
 //    int active_rows;    /* Number of available rows */
     public_key_matrix_t pk_matrix;      /* Matrix (linked list) of public keys */
-}muhors_verifier_t;
+}mumhors_verifier_t;
 
 
 /// Initializes a new MUHORS signer
@@ -50,12 +50,12 @@ typedef struct muhors_verifier{
 /// \param ir Bitmap initial rows to allocate
 /// \param rt Bitmap threshold(maximum) rows to allocate
 /// \param l Number of bitmap matrix rows
-void muhors_init_signer(muhors_signer_t *signer, unsigned char *seed,
+void mumhors_init_signer(mumhors_signer_t *signer, unsigned char *seed,
                        int t, int k, int ir, int rt, int l);
 
 /// Deletes the MUHORS signer struct
 /// \param signer Pointer to MUHORS signer struct
-void muhors_delete_signer(muhors_signer_t *signer);
+void mumhors_delete_signer(mumhors_signer_t *signer);
 
 /// Initializes a new MUHORS verifier
 /// \param verifier Pointer to MUHORS verifier struct
@@ -63,19 +63,19 @@ void muhors_delete_signer(muhors_signer_t *signer);
 /// \param c Number of columns in the public key matrix
 /// \param rt Maximum number of rows to consider in its window
 /// \param window_size Size of the window required for each operation
-void muhors_init_verifier(muhors_verifier_t *verifier, int r, int c, int rt, int window_size);
+void mumhors_init_verifier(mumhors_verifier_t *verifier, int r, int c, int rt, int window_size);
 
 
 /// Deletes the MUHORS verifier struct
 /// \param signer Pointer to MUHORS verifier struct
-void muhors_delete_verifier(muhors_verifier_t *verifier);
+void mumhors_delete_verifier(mumhors_verifier_t *verifier);
 
 
-void muhors_verify(muhors_verifier_t *verifier, int * indices, int num_indices);
+void mumhors_verify(mumhors_verifier_t *verifier, int * indices, int num_indices);
 
 
 
 //DEBUG
-void pk_display(muhors_verifier_t *verifier);
-void muhors_invalidate_public_pks(muhors_verifier_t *verifier, int * indices, int num_indices);
+void pk_display(mumhors_verifier_t *verifier);
+void mumhors_invalidate_public_pks(mumhors_verifier_t *verifier, int * indices, int num_indices);
 #endif

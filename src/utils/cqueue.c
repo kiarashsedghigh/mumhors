@@ -1,5 +1,5 @@
-#include <muhors/cqueue.h>
-#include <muhors/debug.h>
+#include <mumhors/cqueue.h>
+#include <mumhors/debug.h>
 #include <stdlib.h>
 #include <stdio.h>
 

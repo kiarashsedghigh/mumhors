@@ -1,5 +1,5 @@
-# muhors
-Maximum Utilization HORS (MUHORS) is a new implementation of 
+# MUM-HORS
+Maximum Utilization Multiple HORS (MUM-HORS) is a new implementation of 
 HORS signature in which the utilization of private keys and
 public keys, is maximum. This is critical in situations where to 
 reduce the signature size, we use small `k` but large `t` values

@@ -1,5 +1,5 @@
-#ifndef MUHORS_CQUEUE_H
-#define MUHORS_CQUEUE_H
+#ifndef MUMHORS_CQUEUE_H
+#define MUMHORS_CQUEUE_H
 
 /// Circular queue structure
 typedef struct cqueue {

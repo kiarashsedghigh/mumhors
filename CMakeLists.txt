@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(muhors)
+project(mumhors)
 
 set(CMAKE_CXX_STANDARD 14)
 
@@ -19,7 +19,7 @@ add_custom_command(
 
 
 # Add executable
-add_executable(muhors
+add_executable(mumhors
         src/utils/cqueue.c
         src/utils/cqueue.h
         README.md
@@ -32,10 +32,10 @@ add_executable(muhors
         src/utils/sort.h
         src/utils/math.c
         src/utils/math.h
-        src/muhors.c
-        src/muhors.h)
+        src/mumhors.c
+        src/mumhors.h)
 
-install(TARGETS muhors DESTINATION /usr/bin)
+install(TARGETS mumhors DESTINATION /usr/bin)
 
 
 #cmake_minimum_required(VERSION 3.22)

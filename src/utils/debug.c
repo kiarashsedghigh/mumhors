@@ -1,4 +1,4 @@
-#include <muhors/debug.h>
+#include <mumhors/debug.h>
 #include <stdio.h>
 
 void debug(unsigned char message[], int debug_level){

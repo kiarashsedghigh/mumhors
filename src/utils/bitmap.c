@@ -1,6 +1,6 @@
-#include <muhors/bitmap.h>
-#include <muhors/sort.h>
-#include <muhors/math.h>
+#include <mumhors/bitmap.h>
+#include <mumhors/sort.h>
+#include <mumhors/math.h>
 #include <stdlib.h>
 #include <assert.h>
 #include <unistd.h>
@@ -219,14 +219,13 @@ int bitmap_unset_index_in_window(bitmap_t *bm, int *indices, int num_index) {
     /* Retrieving the row and column numbers for the provided indices */
     for (int i = 0; i < num_index; i++) {
         if (i > 0 && indices[i] == indices[i - 1]) continue;
-        int target_index = indices[i]; //TODO SUprress
 
         /* Find the row containing our desired index */
         row_t *row = bm->bitmap_matrix.head;
         while (row) {
-            if (target_index < row->set_bits)
+            if (indices[i] < row->set_bits)
                 break;
-            target_index -= row->set_bits;
+            indices[i] -= row->set_bits;
             row = row->next;
         }
 
@@ -234,13 +233,13 @@ int bitmap_unset_index_in_window(bitmap_t *bm, int *indices, int num_index) {
         for (int j = 0; j < bm->cB; j++) {
             if (row->data[j]) { // Skip 0 bytes
                 int cnt_ones = count_num_set_bits(row->data[j]);
-                if (target_index < cnt_ones) {
+                if (indices[i] < cnt_ones) {
                     /* Find the real index of the target_index'th bit in the current byte */
-                    int bit_idx = byte_get_index_nth_set(row->data[j], target_index + 1);
+                    int bit_idx = byte_get_index_nth_set(row->data[j], indices[i] + 1);
                     printf("R: %d C: %d\n", row->number, j*8 + bit_idx);
                     break;
                 } else
-                    target_index -= cnt_ones;
+                    indices[i] -= cnt_ones;
             }
         }
     }

@@ -1,5 +1,5 @@
-#ifndef MUHORS_DEBUG_H
-#define MUHORS_DEBUG_H
+#ifndef MUMHORS_DEBUG_H
+#define MUMHORS_DEBUG_H
 
 #define DEBUG_INF 0
 #define DEBUG_ERR 1

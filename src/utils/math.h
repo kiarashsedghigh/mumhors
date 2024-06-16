@@ -1,5 +1,5 @@
-#ifndef MUHORS_MATH_H
-#define MUHORS_MATH_H
+#ifndef MUMHORS_MATH_H
+#define MUMHORS_MATH_H
 
 
 /// Returns the minimum of two integers
@@ -12,7 +12,6 @@ int min(int x, int y);
 ///// \param num Given number
 ///// \return Number of set bits
 int count_num_set_bits(int num);
-
 
 
 /// Returns the bit index of the nth set bit of the given byte

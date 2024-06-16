@@ -1,7 +1,7 @@
-#include <muhors/bitmap.h>
-#include <muhors/debug.h>
-#include <muhors/sort.h>
-#include <muhors/muhors.h>
+#include <mumhors/bitmap.h>
+#include <mumhors/debug.h>
+#include <mumhors/sort.h>
+#include <mumhors/mumhors.h>
 
 #include <time.h>
 #include <stdlib.h>
@@ -36,7 +36,7 @@ int main(int argc, char ** argv){
     int t, k , l , ir, rt , tests;
 //    if (argc<7){
 //        printf("|HELP|\n\tRun:\n");
-//        printf("\t\t muhors T K L IR RT TESTS\n");
+//        printf("\t\t mumhors T K L IR RT TESTS\n");
 //        exit(1);
 //    }
 //
@@ -63,11 +63,11 @@ int main(int argc, char ** argv){
 //    tests=1;
 
     ////////////////////////////////
-    muhors_signer_t signer;
-    muhors_verifier_t verifier;
+    mumhors_signer_t signer;
+    mumhors_verifier_t verifier;
 
-    muhors_init_signer(&signer, "asd", t, l ,ir, rt,l);
-    muhors_init_verifier(&verifier, l, t, rt, t);
+    mumhors_init_signer(&signer, "asd", t, l ,ir, rt,l);
+    mumhors_init_verifier(&verifier, l, t, rt, t);
 
 //
 //
@@ -77,28 +77,35 @@ int main(int argc, char ** argv){
 //
 //    srand(time(NULL));
 //
-    int * indices = malloc(sizeof(int) * k);
-
-    for(int i=0;i< tests; i++){
-        if (i==20)
-            break;
-        generate_rands(indices, k, t);
-//        exit(0);
-        printf("--T %d--\n", i);
-//        if (i>1043810)
-//            pk_display(&verifier);
-        muhors_verify(&verifier, indices, k);
-    }
-    free(indices);
-
-
+//    int * indices = malloc(sizeof(int) * k);
+//
+//    for(int i=0;i< tests; i++){
+//        if (i==20)
+//            break;
+//        generate_rands(indices, k, t);
+////        exit(0);
+//        printf("--T %d--\n", i);
+////        if (i>1043810)
+////            pk_display(&verifier);
+//        mumhors_verify(&verifier, indices, k);
+//    }
+//    free(indices);
 
 
 
-    muhors_delete_verifier(&verifier);
-    muhors_delete_signer(&signer);
-    exit(0);
 
+
+    mumhors_delete_verifier(&verifier);
+    mumhors_delete_signer(&signer);
+
+//
+//
+//
+//    t=1024;
+//    k=16;
+//    l=16777217;
+//    rt=12;
+//    tests=1073741824;
 
     bitmap_t bm;
 
@@ -112,8 +119,6 @@ int main(int argc, char ** argv){
         generate_rands(idx, k, t);
 
 
-        if(i==20)
-            break;
 //        printf("%d\n", i);
         if(bitmap_unset_index_in_window(&bm, idx, k) == BITMAP_UNSET_BITS_FAILED){
             printf("---> Last covered message: %d\n", i);

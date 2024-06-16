@@ -1,4 +1,4 @@
-#include <muhors/math.h>
+#include <mumhors/math.h>
 
 int min(int x, int y){
     if(x<y)
