@@ -9,7 +9,7 @@ Hence, a new approach to mitigate this waste is critical.
 # Installation
 To install first:
 ```
-git clone https://github.com/kiarashsedghigh/muhors.git
+git clone https://github.com/kiarashsedghigh/mumhors.git
 ```
 To build the binary:
 ```
