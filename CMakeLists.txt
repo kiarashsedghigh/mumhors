@@ -31,7 +31,9 @@ add_executable(muhors
         src/utils/sort.c
         src/utils/sort.h
         src/utils/math.c
-        src/utils/math.h)
+        src/utils/math.h
+        src/muhors.c
+        src/muhors.h)
 
 install(TARGETS muhors DESTINATION /usr/bin)
 

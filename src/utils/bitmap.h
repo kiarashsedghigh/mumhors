@@ -16,6 +16,7 @@ typedef struct bitmap_journaling{
     int cnt_row_compression;
     int cnt_count_unset;
     int cnt_discarded_bits;
+    int cnt_discarded_rows;
 }bitmap_journaling_t;
 #endif
 
