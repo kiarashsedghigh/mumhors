@@ -17,7 +17,7 @@ void muhors_init_signer(muhors_signer_t *signer, unsigned char *seed,
     signer->rt = rt;
     signer->l = l;
 
-    bitmap_init(&signer->bm, signer->l, signer->t, signer->ir, signer->rt);
+    bitmap_init(&signer->bm, signer->l, signer->t, signer->rt, signer->t);
 }
 
 void muhors_delete_signer(muhors_signer_t *signer) {
@@ -213,34 +213,34 @@ void muhors_verify(muhors_verifier_t *verifier, int * indices, int num_indices){
         muhors_verifier_alloc_row(verifier);
     }
 
+    for(int i=0;i<num_indices;i++){
+        public_key_t *pk_row = verifier->pk_matrix.head;
+        int target_index = indices[i];
+
+        /* Finding the row containing the target index */
+        int row_index = 0;
+        while(pk_row){
+            if (target_index<pk_row->available_pks)
+                break;
+            target_index-=pk_row->available_pks;
+            row_index++;
+            pk_row=pk_row->next;
+        }
+
+        /* The current row contains the public keys */
+        for(int j=0;j<verifier->c;j++){
+            if (pk_row->pks[j]){ // If the PK is not NULL
+                if(target_index == 0){
+                    printf("R: %d C: %d", row_index, j);
+                    break;
+                }
+                target_index--;
+            }
+        }
+        printf("\n");
+    }
     muhors_invalidate_public_pks(verifier, indices,num_indices);
 
-//    for(int i=0;i<num_indices;i++){
-//        public_key_t *pk_row = verifier->pk_matrix.head;
-//        int target_index = indices[i];
-//
-//        /* Finding the row containing the target index */
-//        int row_index = 0;
-//        while(pk_row){
-//            if (target_index<pk_row->available_pks)
-//                break;
-//            target_index-=pk_row->available_pks;
-//            row_index++;
-//            pk_row=pk_row->next;
-//        }
-//
-//        /* The current row contains the public keys */
-//        for(int j=0;j<verifier->c;j++){
-//            if (pk_row->pks[j]){ // If the PK is not NULL
-//                if(target_index == 0){
-//                    printf("R: %d C: %d", row_index, j);
-//                    break;
-//                }
-//                target_index--;
-//            }
-//        }
-//        printf("\n");
-//    }
 }
 
 

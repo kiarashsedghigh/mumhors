@@ -8,18 +8,27 @@
 #include <stdio.h>
 
 void generate_rands(int * arr, int k, int t) {
-    for (int i = 0; i < k; i++)
-        arr[i] = rand() % t;
-//    printf("%d %d\n", arr[0], arr[1]);
-//    exit(0);
-//    merge_sort(arr, 0, k - 1);
-//    for(int i=1;i<k;i++){
-//        if(arr[i]==arr[i-1]){
-//            printf("SAME\n");
-//            exit(0);
-//        }
-//
-//    }
+    int in, im;
+    int N = t-1;
+    int M = k;
+    im = 0;
+
+    for (in = 0; in < N && im < M; ++in) {
+        int rn = N - in;
+        int rm = M - im;
+        if (rand() % rn < rm)
+            /* Take it */
+            arr[im++] = in + 1; /* +1 since your range begins from 1 */
+    }
+
+    merge_sort(arr, 0, k - 1);
+    for(int i=1;i<k;i++){
+        if(arr[i]==arr[i-1]){
+            printf("SAME\n");
+            exit(0);
+        }
+    }
+
 }
 
 
@@ -41,9 +50,8 @@ int main(int argc, char ** argv){
 
     t=1024;
     k=16;
-    l=16384;
-    ir=10;
-    rt=10;
+    l=16385;
+    rt=12;
     tests=1048576;
 
 
@@ -61,18 +69,21 @@ int main(int argc, char ** argv){
     muhors_init_signer(&signer, "asd", t, l ,ir, rt,l);
     muhors_init_verifier(&verifier, l, t, rt, t);
 
-
-
-//    l=5;
-//    t=5;
-//    rt=3;
-
-    srand(time(NULL));
-
+//
+//
+////    l=5;
+////    t=5;
+////    rt=3;
+//
+//    srand(time(NULL));
+//
     int * indices = malloc(sizeof(int) * k);
 
     for(int i=0;i< tests; i++){
+        if (i==20)
+            break;
         generate_rands(indices, k, t);
+//        exit(0);
         printf("--T %d--\n", i);
 //        if (i>1043810)
 //            pk_display(&verifier);
@@ -86,36 +97,40 @@ int main(int argc, char ** argv){
 
     muhors_delete_verifier(&verifier);
     muhors_delete_signer(&signer);
+    exit(0);
+
+
+    bitmap_t bm;
+
+    bitmap_init(&bm, l, t, rt, t);
 
 
 
-//
-//    bitmap_t bm;
-//    bitmap_init(&bm, l, t, ir, rt);
-//
-//    int * indices = malloc(sizeof(int) * k);
-//    srand(time(NULL));
-//
-//    for(int i=0;i< tests; i++){
-//        generate_rands(indices, k, t);
-////        for(int i=0;i<k;i++)
-////            printf("%d ", indices[i]);
-////        printf("    ");
-////        printf("%d\n", i);
-////        if(bitmap_unset_index_in_window(&bm, indices, k, t) == BITMAP_UNSET_BITS_FAILED){
-////            printf("---> Last covered message: %d\n", i);
-////
-////            debug("No more rows to allocate", DEBUG_ERR);
-////#ifdef JOURNAL
-////            bitmap_report(&bm);
-////#endif
-////            bitmap_delete(&bm);
-////            exit(1);
-////        }
-//    }
-//    debug("Successfully covered all the test cases", DEBUG_INF);
-//#ifdef JOURNAL
-//    bitmap_report(&bm);
-//#endif
-//    bitmap_delete(&bm);
+    int * idx = malloc(sizeof(int) * k);
+
+    for(int i=0;i< tests; i++){
+        generate_rands(idx, k, t);
+
+
+        if(i==20)
+            break;
+//        printf("%d\n", i);
+        if(bitmap_unset_index_in_window(&bm, idx, k) == BITMAP_UNSET_BITS_FAILED){
+            printf("---> Last covered message: %d\n", i);
+
+            debug("No more rows to allocate", DEBUG_ERR);
+#ifdef JOURNAL
+            bitmap_report(&bm);
+#endif
+            bitmap_delete(&bm);
+            exit(1);
+        }
+    }
+
+
+    debug("Successfully covered all the test cases", DEBUG_INF);
+#ifdef JOURNAL
+    bitmap_report(&bm);
+#endif
+    bitmap_delete(&bm);
 }
