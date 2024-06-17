@@ -2,14 +2,12 @@
 #include <mumhors/debug.h>
 #include <mumhors/sort.h>
 #include <mumhors/mumhors.h>
-
-#include <time.h>
 #include <stdlib.h>
 #include <stdio.h>
 
-void generate_rands(int * arr, int k, int t) {
+void generate_rands(int *arr, int k, int t) {
     int in, im;
-    int N = t-1;
+    int N = t - 1;
     int M = k;
     im = 0;
 
@@ -22,8 +20,8 @@ void generate_rands(int * arr, int k, int t) {
     }
 
     merge_sort(arr, 0, k - 1);
-    for(int i=1;i<k;i++){
-        if(arr[i]==arr[i-1]){
+    for (int i = 1; i < k; i++) {
+        if (arr[i] == arr[i - 1]) {
             printf("SAME\n");
             exit(0);
         }
@@ -32,8 +30,8 @@ void generate_rands(int * arr, int k, int t) {
 }
 
 
-int main(int argc, char ** argv){
-    int t, k , l , ir, rt , tests;
+int main(int argc, char **argv) {
+    int t, k, l, ir, rt, tests;
 //    if (argc<7){
 //        printf("|HELP|\n\tRun:\n");
 //        printf("\t\t mumhors T K L IR RT TESTS\n");
@@ -48,94 +46,46 @@ int main(int argc, char ** argv){
 //    rt= atoi(argv[5]);
 //    tests= atoi(argv[6]);
 
-    t=1024;
-    k=16;
-    l=16385;
-    rt=12;
-    tests=1048576;
+    t = 1024; k = 16; l = 16385; rt = 12; tests = 1048576;
+    /* Generating the public key from the seed to be provisioned to the verifier.
+     * The signer only needs to have access to the seed as not precomputing the private key
+     * is the exact goal of this program. */
+    public_key_matrix_t pk_matrix;
+    mumhors_pk_gen(&pk_matrix, "seed", l, t);
 
-
-//    t=1024;
-//    k=16;
-//    l=20;
-//    ir=8;
-//    rt=8;
-//    tests=1;
-
-    ////////////////////////////////
+    /* Create and initialize the signer */
     mumhors_signer_t signer;
+    mumhors_init_signer(&signer, "seed", t, l, ir, rt, l);
+
+    /* Create and initialize the verifier */
     mumhors_verifier_t verifier;
-
-    mumhors_init_signer(&signer, "asd", t, l ,ir, rt,l);
-    mumhors_init_verifier(&verifier, l, t, rt, t);
-
-//
-//
-////    l=5;
-////    t=5;
-////    rt=3;
-//
-//    srand(time(NULL));
-//
-//    int * indices = malloc(sizeof(int) * k);
-//
-//    for(int i=0;i< tests; i++){
-//        if (i==20)
-//            break;
-//        generate_rands(indices, k, t);
-////        exit(0);
-//        printf("--T %d--\n", i);
-////        if (i>1043810)
-////            pk_display(&verifier);
-//        mumhors_verify(&verifier, indices, k);
-//    }
-//    free(indices);
+    mumhors_init_verifier(&verifier, pk_matrix, l, t, rt, t);
 
 
+    /* Running the tests */
+    int *indices = malloc(sizeof(int) * k);
 
+    for (int i = 0; i < tests; i++) {
+        generate_rands(indices, k, t);
 
-
-    mumhors_delete_verifier(&verifier);
-    mumhors_delete_signer(&signer);
-
-//
-//
-//
-//    t=1024;
-//    k=16;
-//    l=16777217;
-//    rt=12;
-//    tests=1073741824;
-
-    bitmap_t bm;
-
-    bitmap_init(&bm, l, t, rt, t);
-
-
-
-    int * idx = malloc(sizeof(int) * k);
-
-    for(int i=0;i< tests; i++){
-        generate_rands(idx, k, t);
-
-
-//        printf("%d\n", i);
-        if(bitmap_unset_index_in_window(&bm, idx, k) == BITMAP_UNSET_BITS_FAILED){
+        /* First sign the message */ //TODO The name of the following functions will be changed
+        if (bitmap_unset_index_in_window(&signer.bm, indices, k) == BITMAP_UNSET_BITS_FAILED) {
             printf("---> Last covered message: %d\n", i);
-
-            debug("No more rows to allocate", DEBUG_ERR);
-#ifdef JOURNAL
-            bitmap_report(&bm);
-#endif
-            bitmap_delete(&bm);
-            exit(1);
+            debug("[SIGNER] No more rows to allocate", DEBUG_ERR);
+            break;
+        }
+        if (mumhors_verify(&verifier, indices, k) == VERIFY_NO_MORE_ROW_FAILED) {
+            printf("---> Last covered message: %d\n", i);
+            debug("[Verifier] No more rows to allocate", DEBUG_ERR);
+            break;
         }
     }
 
-
-    debug("Successfully covered all the test cases", DEBUG_INF);
 #ifdef JOURNAL
-    bitmap_report(&bm);
+    bitmap_report(&signer.bm);
 #endif
-    bitmap_delete(&bm);
+
+    mumhors_delete_verifier(&verifier);
+    mumhors_delete_signer(&signer);
+    free(indices);
 }

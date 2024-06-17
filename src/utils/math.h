@@ -8,11 +8,10 @@
 /// \return Minimum of two integers
 int min(int x, int y);
 
-///// Counts number of bits set in the given number
-///// \param num Given number
-///// \return Number of set bits
+/// Counts number of bits set in the given number
+/// \param num Given number
+/// \return Number of set bits
 int count_num_set_bits(int num);
-
 
 /// Returns the bit index of the nth set bit of the given byte
 /// \param byte A given byte

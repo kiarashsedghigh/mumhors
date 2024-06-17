@@ -218,14 +218,14 @@ int bitmap_unset_index_in_window(bitmap_t *bm, int *indices, int num_index) {
 
     /* Retrieving the row and column numbers for the provided indices */
     for (int i = 0; i < num_index; i++) {
-        if (i > 0 && indices[i] == indices[i - 1]) continue;
+        int target_index = indices[i];
 
         /* Find the row containing our desired index */
         row_t *row = bm->bitmap_matrix.head;
         while (row) {
-            if (indices[i] < row->set_bits)
+            if (target_index < row->set_bits)
                 break;
-            indices[i] -= row->set_bits;
+            target_index -= row->set_bits;
             row = row->next;
         }
 
@@ -233,26 +233,33 @@ int bitmap_unset_index_in_window(bitmap_t *bm, int *indices, int num_index) {
         for (int j = 0; j < bm->cB; j++) {
             if (row->data[j]) { // Skip 0 bytes
                 int cnt_ones = count_num_set_bits(row->data[j]);
-                if (indices[i] < cnt_ones) {
+                if (target_index < cnt_ones) {
                     /* Find the real index of the target_index'th bit in the current byte */
-                    int bit_idx = byte_get_index_nth_set(row->data[j], indices[i] + 1);
+                    int bit_idx = byte_get_index_nth_set(row->data[j], target_index + 1);
                     printf("R: %d C: %d\n", row->number, j*8 + bit_idx);
                     break;
-                } else
-                    indices[i] -= cnt_ones;
+                }
+                target_index -= cnt_ones;
             }
         }
     }
 
     /*
      *
-     *  Unsetting the bit indices
-     *
+     *  Unsetting the bit indices.
+     *  //TODO Can we do better than this?
      * */
 
 
     /* Sort the indices.
-     * Description:
+     * Description: The rationale behind first soring and then unsetting is that, when the indices
+     * are given in not-ordered fashion, then if we try to unset the first one, we loose the information
+     * for the next index. For instance, if the set {5, 7, 10} is given, when we unset 5, the bit at index 7
+     * becomes index 7 and the 10 becomes 8. But this is more complicated because if the set is {5, 1, 10}, then
+     * unsetting 5, will not impact 1 but impacts 7 and changes it to 9 but not even 8. Sorting the indices can
+     * resolve this issue. However, for the usage in MUM-HORS, we shall not provide a sorted value back. So either
+     * we should maintain a data structure that returns back the actual order before sorting, or, first perform
+     * fetching the values and then remove the indices.
      * */
     merge_sort(indices, 0, num_index - 1);
 
