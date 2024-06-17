@@ -2,10 +2,13 @@
 #include <mumhors/bitmap.h>
 #include <mumhors/sort.h>
 #include <mumhors/math.h>
+#include <mumhors/bits.h>
+#include <mumhors/hash.h>
+#include <math.h>
 #include <stdlib.h>
 #include <string.h>
 
-void mumhors_pk_gen(public_key_matrix_t *pk_matrix, unsigned char *seed, int row, int col) {
+void mumhors_pk_gen(public_key_matrix_t *pk_matrix, unsigned char *seed, int seed_len, int row, int col) {
     /* Initialize the linked list variables */
     pk_matrix->head = NULL;
     pk_matrix->tail = NULL;
@@ -16,9 +19,17 @@ void mumhors_pk_gen(public_key_matrix_t *pk_matrix, unsigned char *seed, int row
         pk_node->pks = malloc(sizeof(unsigned char *) * col);
 
         /* Initialized the public keys in the current row with a dummy public key */
-        for (int i = 0; i < col; i++) {
-            pk_node->pks[i] = malloc(10);
-            strcpy(pk_node->pks[i], "Dummy"); //TODO use random generator
+        for (int j = 0; j < col; j++) {
+            unsigned char *pk = malloc(SHA256_OUTPUT_LEN);
+            unsigned char sk[SHA256_OUTPUT_LEN];
+            unsigned char *new_seed = malloc(seed_len + 4 + 4);
+            memcpy(new_seed, seed, seed_len);
+            memcpy(new_seed + seed_len, &i, 4);
+            memcpy(new_seed + seed_len + 4, &j, 4);
+            ltc_hash_sha2_256(sk, new_seed, seed_len + 4 + 4);
+            ltc_hash_sha2_256(pk, sk, SHA256_OUTPUT_LEN);
+            pk_node->pks[j] = pk;
+            free(new_seed);
         }
         pk_node->number = i;
         pk_node->available_pks = col;
@@ -35,27 +46,67 @@ void mumhors_pk_gen(public_key_matrix_t *pk_matrix, unsigned char *seed, int row
     }
 }
 
-void mumhors_init_signer(mumhors_signer_t *signer, unsigned char *seed, int t, int k, int ir, int rt, int r) {
+void mumhors_init_signer(mumhors_signer_t *signer, unsigned char *seed, int seed_len,
+                         int t, int k, int l, int rt, int r) {
     /* Setting the signer hyperparameters */
     signer->seed = seed;
+    signer->seed_len = seed_len;
     signer->t = t;
     signer->k = k;
     signer->t = t;
     signer->rt = rt;
     signer->r = r;
+    signer->l = l;
+    signer->signature = malloc((signer->k * signer->l) / 8);
 
     /* Initializing the underlying bitmap data structure */
     bitmap_init(&signer->bm, signer->r, signer->t, signer->rt, signer->t);
 }
 
 void mumhors_delete_signer(mumhors_signer_t *signer) {
-    /* Only bitmap will be deallocated */
+    /* Deallocate the signature buffer and the bitmap */
+    free(signer->signature);
     bitmap_delete(&signer->bm);
 }
 
-void mumhors_init_verifier(mumhors_verifier_t *verifier, public_key_matrix_t pk_matrix, int r, int c,
-                           int rt, int window_size) {
+
+static void perform_rejection_sampling(unsigned char *message, int k, int t, int *message_indices) {
+
+    /* Extracting the k logt parts from the message and */
+    for (int i = 0; i < k; i++) {
+        int portion_value = read_bits_as_4bytes(message, i + 1, (int) log2(t));
+        message_indices[i] = portion_value;
+    }
+}
+
+int mumhors_sign_message(mumhors_signer_t *signer, unsigned char *message, int message_len) {
+    int *message_indices = malloc(sizeof(int) * signer->k);
+
+    /* Hashing the message */
+    unsigned char message_hash[SHA256_OUTPUT_LEN];
+    ltc_hash_sha2_256(message_hash, message, message_len);
+
+    /* Extract the indices from the hash of the message while ensuring they are different
+     * through a process known as rejection sampling. */
+    perform_rejection_sampling(message, signer->k, signer->t, message_indices);
+
+    if (bitmap_extract_signature_unset_index_in_window(&signer->bm, message_indices, signer->k,
+                                                       signer->signature, signer->seed, signer->seed_len) ==
+        BITMAP_UNSET_BITS_FAILED) {
+        free(message_indices);
+        return SIGN_NO_MORE_ROW_FAILED;
+    }
+    free(message_indices);
+    return SIGN_SUCCESS;
+}
+
+
+void mumhors_init_verifier(mumhors_verifier_t *verifier, public_key_matrix_t pk_matrix, int t, int k, int l,
+                           int r, int c, int rt, int window_size) {
     /* Setting the hyperparameters of the verifier */
+    verifier->t = t;
+    verifier->k = k;
+    verifier->l = l;
     verifier->r = r;
     verifier->c = c;
     verifier->rt = rt;
@@ -63,6 +114,7 @@ void mumhors_init_verifier(mumhors_verifier_t *verifier, public_key_matrix_t pk_
     verifier->windows_size = window_size;
     verifier->nxt_row_number = verifier->rt;    /* We consider rt number of rows in our window initially */
     verifier->pk_matrix = pk_matrix;
+
 }
 
 void mumhors_delete_verifier(mumhors_verifier_t *verifier) {
@@ -161,7 +213,7 @@ static int mumhors_verifier_alloc_row(mumhors_verifier_t *verifier) {
      * We note that, considering the row with fewest PKs and remove any row with such number, is not a solution as
      * it might happen that our matrix has no row with zero and many with X PKs. Hence, the number of discard bits will
      * increase and is not desirable. */
-    if (!(cnt_removed_rows= mumhors_verifier_cleanup_rows(verifier))) {
+    if (!(cnt_removed_rows = mumhors_verifier_cleanup_rows(verifier))) {
         /* No row was cleaned up. We perform the same policy as the signer by removing a/the row with
          * the fewest number of PKs*/
 
@@ -181,7 +233,7 @@ static int mumhors_verifier_alloc_row(mumhors_verifier_t *verifier) {
         mumhors_verifier_remove_row(verifier, target_row);
 
         /* We only remove one row */
-        cnt_removed_rows=1;
+        cnt_removed_rows = 1;
     }
 
     /* Add more rows virtually to the window. They are virtual as
@@ -194,11 +246,16 @@ static int mumhors_verifier_alloc_row(mumhors_verifier_t *verifier) {
 }
 
 
-int mumhors_verify(mumhors_verifier_t *verifier, int *indices, int num_indices) {
+static int mumhors_verify(mumhors_verifier_t *verifier, int *indices, int num_indices, unsigned char *signature) {
     if (verifier->windows_size > verifier->active_pks) {
         if (mumhors_verifier_alloc_row(verifier) == PKMATRIX_NO_MORE_ROWS_TO_ALLOCATE)
             return VERIFY_NO_MORE_ROW_FAILED;
     }
+
+    /* A buffer for extracting the private key from the signature */
+    unsigned char *sk = malloc(verifier->l / 8);
+
+    int ver_status = 1;
 
     /* Retrieving the row and column numbers for the provided indices */
     for (int i = 0; i < num_indices; i++) {
@@ -217,15 +274,29 @@ int mumhors_verify(mumhors_verifier_t *verifier, int *indices, int num_indices) 
         for (int j = 0; j < verifier->c; j++) {
             if (pk_row->pks[j]) { // If the PK is not NULL
                 if (target_index == 0) {
-                    printf("R: %d C: %d", pk_row->number, j);
+
+                    /* Extract the corresponding private key and hash it */
+                    memcpy(sk, signature + i * verifier->l / 8, verifier->l / 8);
+                    unsigned char sk_hash[SHA256_OUTPUT_LEN];
+                    ltc_hash_sha2_256(sk_hash, sk, verifier->l / 8);
+
+                    /* Compare the hash with the current public key*/
+                    if (strncmp(pk_row->pks[j], sk_hash, SHA256_OUTPUT_LEN) != 0) {
+                        free(sk);
+                        ver_status = 0;
+                        goto unset;
+                    }
+
+//                    printf("R: %d C: %d", pk_row->number, j);
                     break;
                 }
                 target_index--;
             }
         }
-        printf("\n");
+//        printf("\n");
     }
 
+    unset:
 
     /*
      *  Unsetting the indices.
@@ -274,7 +345,33 @@ int mumhors_verify(mumhors_verifier_t *verifier, int *indices, int num_indices) 
             }
         }
     }
+
+    if(!ver_status)
+        return VERIFY_FAILED;
+
     return VERIFY_SUCCESS;
+}
+
+
+int mumhors_verify_message(mumhors_verifier_t *verifier, unsigned char *signature,
+                           unsigned char *message, int message_len) {
+
+    int *message_indices = malloc(sizeof(int) * verifier->k);
+
+    /* Hashing the message */
+    unsigned char message_hash[SHA256_OUTPUT_LEN];
+    ltc_hash_sha2_256(message_hash, message, message_len);
+
+    /* Extract the indices from the hash of the message while ensuring they are different
+     * through a process known as rejection sampling. */
+    perform_rejection_sampling(message, verifier->k, verifier->t, message_indices);
+
+    int status = mumhors_verify(verifier, message_indices, verifier->k, signature);
+
+    free(message_indices);
+
+    return status;
+
 }
 
 

@@ -57,11 +57,15 @@ void bitmap_init(bitmap_t *bm, int rows, int cols, int row_threshold, int window
 /// \param bm Pointer to the bitmap structure
 void bitmap_delete(bitmap_t *bm);
 
-/// Unset bit index in the specified window
+/// Extract the signature and unset bit index in the specified window
 /// \param bm Pointer to the bitmap structure
 /// \param indices Array of indices to be unset
+/// \param signature Pointer to a buffer for storing the signature
+/// \param seed Seed to generate the private keys and signatures
+/// \param seed_len Size of the seed in terms of bytes
 /// \return BITMAP_UNSET_BITS_SUCCESS or BITMAP_UNSET_BITS_FAILED
-int bitmap_unset_index_in_window(bitmap_t *bm, int *indices, int num_index);
+int bitmap_extract_signature_unset_index_in_window(bitmap_t *bm, int *indices, int num_index,
+                                                   unsigned char *signature, unsigned char *seed, int seed_len);
 
 #ifdef JOURNAL
 /// Presents a report of the bitmap performance

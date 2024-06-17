@@ -1,6 +1,9 @@
 #include <mumhors/bitmap.h>
 #include <mumhors/sort.h>
 #include <mumhors/math.h>
+#include <mumhors/hash.h>
+#include <string.h>
+
 #include <stdlib.h>
 #include <assert.h>
 #include <unistd.h>
@@ -209,7 +212,9 @@ static int bitmap_allocate_more_row(bitmap_t *bm) {
 }
 
 
-int bitmap_unset_index_in_window(bitmap_t *bm, int *indices, int num_index) {
+int bitmap_extract_signature_unset_index_in_window(bitmap_t *bm, int *indices, int num_index,
+                                                   unsigned char *signature, unsigned char *seed, int seed_len) {
+
     /* If there are not enough 1s in the current window, add a new row. */
     if (bm->window_size > bm->set_bits) {
         if (bitmap_allocate_more_row(bm) == BITMAP_NO_MORE_ROWS_TO_ALLOCATE)
@@ -236,7 +241,19 @@ int bitmap_unset_index_in_window(bitmap_t *bm, int *indices, int num_index) {
                 if (target_index < cnt_ones) {
                     /* Find the real index of the target_index'th bit in the current byte */
                     int bit_idx = byte_get_index_nth_set(row->data[j], target_index + 1);
-                    printf("R: %d C: %d\n", row->number, j*8 + bit_idx);
+
+                    int row_number = row->number;
+                    int col_number = j*8 + bit_idx;
+
+                    /* Create the respective private key */
+                    unsigned char sk[SHA256_OUTPUT_LEN];
+                    unsigned char *new_seed = malloc(seed_len + 4 + 4);
+                    memcpy(new_seed, seed, seed_len);
+                    memcpy(new_seed + seed_len, &row_number, 4);
+                    memcpy(new_seed + seed_len + 4, &col_number, 4);
+                    ltc_hash_sha2_256(sk, new_seed, seed_len+ 4 + 4);
+                    memcpy(signature + i*SHA256_OUTPUT_LEN, sk, SHA256_OUTPUT_LEN);
+                    free(new_seed);
                     break;
                 }
                 target_index -= cnt_ones;

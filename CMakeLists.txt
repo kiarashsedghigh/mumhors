@@ -5,7 +5,10 @@ set(CMAKE_CXX_STANDARD 14)
 
 include_directories(src/utils)
 
-add_compile_options(-O3 -w -DJOURNAL)
+add_compile_options(-O3 -w -DJOURNAL )
+#add_link_options(-ltomcrypt)
+
+link_libraries(tomcrypt m)
 
 
 install(DIRECTORY src/utils/ DESTINATION /usr/include/mumhors FILES_MATCHING PATTERN "*.h")
@@ -33,7 +36,11 @@ add_executable(mumhors
         src/utils/math.c
         src/utils/math.h
         src/mumhors.c
-        src/mumhors.h)
+        src/mumhors.h
+        src/crypto/sha2.c
+        src/hash.h
+        src/utils/bits.c
+        src/utils/bits.h)
 
 install(TARGETS mumhors DESTINATION /usr/bin)
 

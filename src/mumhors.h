@@ -6,17 +6,23 @@
 #define PKMATRIX_NO_MORE_ROWS_TO_ALLOCATE 1
 
 #define VERIFY_SUCCESS 0
+#define VERIFY_FAILED 1
 #define VERIFY_NO_MORE_ROW_FAILED 1
 
+#define SIGN_SUCCESS 0
+#define SIGN_NO_MORE_ROW_FAILED 1
 
 /// Struct for MUMHORS signer
 typedef struct mumhors_signer {
-    unsigned char *seed;   /* Seed to generate the private keys and signatures */
+    unsigned char *seed;    /* Seed to generate the private keys and signatures */
+    int seed_len;           /* Size of the seed in terms of bytes */
     int t;                  /* HORS t parameter */
     int k;                  /* HORS k parameter */
+    int l;                  /* HORS l parameter */
     int rt;                 /* Bitmap threshold (maximum) rows to allocate */
     int r;                  /* Number of bitmap matrix rows */
     bitmap_t bm;            /* Bitmap for managing the private key utilization */
+    unsigned char *signature;   /* Signature of the message signed by the signer */
 } mumhors_signer_t;
 
 /// Public key node
@@ -35,6 +41,9 @@ typedef struct public_key_matrix {
 
 /// Struct for MUMHORS verifier
 typedef struct mumhors_verifier {
+    int t;                      /* HORS t parameter */
+    int k;                      /* HORS k parameter */
+    int l;                      /* HORS l parameter */
     int r;                      /* Total number of rows in public key matrix (=MUMHORS parameter l)*/
     int c;                      /* Number of columns in public key matrix (=HORS parameter t)*/
     int rt;                     /* Maximum rows to consider the matrix at a time */
@@ -49,21 +58,22 @@ typedef struct mumhors_verifier {
 /// Hence, there is no need to generate a list of private keys as this consumes storage and is not efficient.
 /// \param pk_matrix Pointer to the public key matrix struct
 /// \param seed Seed to generate the public keys
+/// \param seed_len Size of the seed in terms of bytes
 /// \param row Number of matrix rows
 /// \param col Number of matrix columns
-void mumhors_pk_gen(public_key_matrix_t *pk_matrix, unsigned char *seed, int row, int col);
-
+void mumhors_pk_gen(public_key_matrix_t *pk_matrix, unsigned char *seed, int seed_len, int row, int col);
 
 /// Initializes a new MUMHORS signer
 /// \param signer Pointer to MUMHORS signer struct
 /// \param seed Seed to generate the private keys and signatures
+/// \param seed_len Size of the seed in terms of bytes
 /// \param t HORS t parameter
 /// \param k HORS k parameter
-/// \param ir Bitmap initial rows to allocate
+/// \param l HORS l parameter
 /// \param rt Bitmap threshold(maximum) rows to allocate
 /// \param r Number of bitmap matrix rows
-void mumhors_init_signer(mumhors_signer_t *signer, unsigned char *seed,
-                         int t, int k, int ir, int rt, int r);
+void mumhors_init_signer(mumhors_signer_t *signer, unsigned char *seed, int seed_len,
+                         int t, int k, int l, int rt, int r);
 
 /// Deletes the MUMHORS signer struct
 /// \param signer Pointer to MUMHORS signer struct
@@ -72,19 +82,31 @@ void mumhors_delete_signer(mumhors_signer_t *signer);
 /// Initializes a new MUMHORS verifier
 /// \param verifier Pointer to MUMHORS verifier struct
 /// \param pk_matrix Matrix (linked list) of public keys
+/// \param t HORS t parameter
+/// \param k HORS k parameter
+/// \param l HORS l parameter
 /// \param r Number of rows in the public key matrix
 /// \param c Number of columns in the public key matrix
 /// \param rt Maximum number of rows to consider in its window
 /// \param window_size Size of the window required for each operation
-void mumhors_init_verifier(mumhors_verifier_t *verifier, public_key_matrix_t pk_matrix, int r, int c,
-                           int rt, int window_size);
+void mumhors_init_verifier(mumhors_verifier_t *verifier, public_key_matrix_t pk_matrix, int t, int k, int l,
+                           int r, int c, int rt, int window_size);
 
 /// Deletes the MUMHORS verifier struct
 /// \param signer Pointer to MUMHORS verifier struct
 void mumhors_delete_verifier(mumhors_verifier_t *verifier);
 
+/// Sign the message
+/// \param signer Pointer to MUMHORS signer struct
+/// \param message Pointer to the message to be signed
+/// \param message_len Length of the message to be signed
+/// \return SIGN_SUCCESS or SIGN_NO_MORE_ROW_FAILED
+int mumhors_sign_message(mumhors_signer_t *signer, unsigned char *message, int message_len);
 
-int mumhors_verify(mumhors_verifier_t *verifier, int *indices, int num_indices);
+
+int mumhors_verify_message(mumhors_verifier_t *verifier, unsigned char *signature,
+                           unsigned char *message, int message_len);
+
 
 
 //DEBUG
