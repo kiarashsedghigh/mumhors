@@ -5,9 +5,9 @@
 #define PKMATRIX_MORE_ROW_ALLOCATION_SUCCESS 0
 #define PKMATRIX_NO_MORE_ROWS_TO_ALLOCATE 1
 
-#define VERIFY_SUCCESS 0
-#define VERIFY_FAILED 1
-#define VERIFY_NO_MORE_ROW_FAILED 1
+#define VERIFY_SIGNATURE_VALID 0
+#define VERIFY_SIGNATURE_INVALID 1
+#define VERIFY_FAILED_NO_MORE_ROW 2
 
 #define SIGN_SUCCESS 0
 #define SIGN_NO_MORE_ROW_FAILED 1
@@ -104,14 +104,12 @@ void mumhors_delete_verifier(mumhors_verifier_t *verifier);
 int mumhors_sign_message(mumhors_signer_t *signer, unsigned char *message, int message_len);
 
 
-int mumhors_verify_message(mumhors_verifier_t *verifier, unsigned char *signature,
-                           unsigned char *message, int message_len);
-
-
-
-//DEBUG
-void pk_display(mumhors_verifier_t *verifier);
-
-void mumhors_invalidate_public_pks(mumhors_verifier_t *verifier, int *indices, int num_indices);
-
+/// Verifies the signature on the given message
+/// \param verifier Pointer to MUMHORS verifier struct
+/// \param signature Pointer to the signature
+/// \param message Pointer to the message
+/// \param message_len Message's length
+/// \return
+int mumhors_verify_signature(mumhors_verifier_t *verifier, unsigned char *signature,
+                             unsigned char *message, int message_len);
 #endif

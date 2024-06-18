@@ -3,18 +3,19 @@
 
 #define BITMAP_MORE_ROW_ALLOCATION_SUCCESS 0
 #define BITMAP_NO_MORE_ROWS_TO_ALLOCATE 1
-#define BITMAP_UNSET_BITS_SUCCESS 0
-#define BITMAP_UNSET_BITS_FAILED 1
+
+#define BITMAP_EXTENSION_SUCCESS 0
+#define BITMAP_EXTENSION_FAILED 1
 
 
 #ifdef JOURNAL
 /// A group of journaling information which show the performance of the bitmap
-typedef struct bitmap_journaling{
+typedef struct bitmap_journaling {
     int cnt_alloc_more_rows;        /* Number of calls to the row allocation procedure */
     int cnt_cleanup_call;           /* Number of calls to the cleanup procedure */
     int cnt_count_unset;            /* Number of calls to the unset procedure */
     int cnt_discarded_bits;         /* Counting the number of discard bits */
-}bitmap_journaling_t;
+} bitmap_journaling_t;
 #endif
 
 /// Row data structure to represent each row with its meta parameters and data
@@ -23,7 +24,7 @@ typedef struct row {
     int set_bits;               /* Number of set bits (1s) in the row */
     unsigned char *data;        /* The pointer to the bytes of the row */
     struct row *next;           /* Pointer to the next row in the list */
-}row_t;
+} row_t;
 
 /// Bitmap matrix containing the rows of the bitmap matrix
 typedef struct bitmap_row_matrix {
@@ -57,24 +58,33 @@ void bitmap_init(bitmap_t *bm, int rows, int cols, int row_threshold, int window
 /// \param bm Pointer to the bitmap structure
 void bitmap_delete(bitmap_t *bm);
 
-/// Extract the signature and unset bit index in the specified window
+
+/// Extending the bitmap to hold more 1s
+/// \param bm Pointer to the bitmap structure
+/// \return BITMAP_EXTENSION_SUCCESS or BITMAP_EXTENSION_FAILED
+int bitmap_extend_matrix(bitmap_t *bm);
+
+
+/// Returns the row and colum number of the given bit index in the bitmap
+/// \param bm Pointer to the bitmap structure
+/// \param target_index Target index for which we want the row and column numbers
+/// \param row_num Pointer to variable which will store the row number
+/// \param col_num Pointer to variable which will store the column number
+void bitmap_get_row_colum_with_index(bitmap_t *bm, int target_index, int *row_num, int *col_num);
+
+
+/// Unsetting the passed indices in the bitmap
 /// \param bm Pointer to the bitmap structure
 /// \param indices Array of indices to be unset
-/// \param signature Pointer to a buffer for storing the signature
-/// \param seed Seed to generate the private keys and signatures
-/// \param seed_len Size of the seed in terms of bytes
-/// \return BITMAP_UNSET_BITS_SUCCESS or BITMAP_UNSET_BITS_FAILED
-int bitmap_extract_signature_unset_index_in_window(bitmap_t *bm, int *indices, int num_index,
-                                                   unsigned char *signature, unsigned char *seed, int seed_len);
+/// \param num_index Number of passed indices
+void bitmap_unset_indices_in_window(bitmap_t *bm, int *indices, int num_index);
 
 #ifdef JOURNAL
+
 /// Presents a report of the bitmap performance
 /// \param bm Pointer to the bitmap structure
 void bitmap_report(bitmap_t *bm);
+
 #endif
-
-
-// Debug purpose
-void bitmap_display(bitmap_t *bm);
 
 #endif

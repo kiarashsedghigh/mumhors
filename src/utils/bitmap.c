@@ -1,12 +1,10 @@
 #include <mumhors/bitmap.h>
 #include <mumhors/sort.h>
 #include <mumhors/math.h>
-#include <mumhors/hash.h>
 #include <string.h>
-
 #include <stdlib.h>
 #include <assert.h>
-#include <unistd.h>
+#include <stdio.h>
 
 #define BYTES2BITS(x) (x*8)
 
@@ -16,7 +14,6 @@ static void bitmap_free_row(row_t *row) {
     free(row->data);
     free(row);
 }
-
 
 /// Adds a row to the matrix of rows
 /// \param bm Pointer to the bitmap structure
@@ -212,62 +209,46 @@ static int bitmap_allocate_more_row(bitmap_t *bm) {
 }
 
 
-int bitmap_extract_signature_unset_index_in_window(bitmap_t *bm, int *indices, int num_index,
-                                                   unsigned char *signature, unsigned char *seed, int seed_len) {
-
-    /* If there are not enough 1s in the current window, add a new row. */
+int bitmap_extend_matrix(bitmap_t *bm) {
+    /* If there are not enough 1s in the current window, extend the matrix */
     if (bm->window_size > bm->set_bits) {
         if (bitmap_allocate_more_row(bm) == BITMAP_NO_MORE_ROWS_TO_ALLOCATE)
-            return BITMAP_UNSET_BITS_FAILED;
+            return BITMAP_EXTENSION_FAILED;
+    }
+    return BITMAP_EXTENSION_SUCCESS;
+}
+
+
+void bitmap_get_row_colum_with_index(bitmap_t *bm, int target_index, int *row_num, int *col_num) {
+    /* Find the row containing our desired index */
+    row_t *row = bm->bitmap_matrix.head;
+    while (row) {
+        if (target_index < row->set_bits)
+            break;
+        target_index -= row->set_bits;
+        row = row->next;
     }
 
-    /* Retrieving the row and column numbers for the provided indices */
-    for (int i = 0; i < num_index; i++) {
-        int target_index = indices[i];
+    /* The current row contains the desired index */
+    for (int j = 0; j < bm->cB; j++) {
+        if (row->data[j]) { // Skip 0 bytes
+            int cnt_ones = count_num_set_bits(row->data[j]);
+            if (target_index < cnt_ones) {
+                /* Find the real index of the target_index'th bit in the current byte */
+                int bit_idx = byte_get_index_nth_set(row->data[j], target_index + 1);
 
-        /* Find the row containing our desired index */
-        row_t *row = bm->bitmap_matrix.head;
-        while (row) {
-            if (target_index < row->set_bits)
+                /* Return the row number and column number */
+                *row_num = row->number;
+                *col_num = j * 8 + bit_idx;
                 break;
-            target_index -= row->set_bits;
-            row = row->next;
-        }
-
-        /* The current row contains the desired index */
-        for (int j = 0; j < bm->cB; j++) {
-            if (row->data[j]) { // Skip 0 bytes
-                int cnt_ones = count_num_set_bits(row->data[j]);
-                if (target_index < cnt_ones) {
-                    /* Find the real index of the target_index'th bit in the current byte */
-                    int bit_idx = byte_get_index_nth_set(row->data[j], target_index + 1);
-
-                    int row_number = row->number;
-                    int col_number = j*8 + bit_idx;
-
-                    /* Create the respective private key */
-                    unsigned char sk[SHA256_OUTPUT_LEN];
-                    unsigned char *new_seed = malloc(seed_len + 4 + 4);
-                    memcpy(new_seed, seed, seed_len);
-                    memcpy(new_seed + seed_len, &row_number, 4);
-                    memcpy(new_seed + seed_len + 4, &col_number, 4);
-                    ltc_hash_sha2_256(sk, new_seed, seed_len+ 4 + 4);
-                    memcpy(signature + i*SHA256_OUTPUT_LEN, sk, SHA256_OUTPUT_LEN);
-                    free(new_seed);
-                    break;
-                }
-                target_index -= cnt_ones;
             }
+            target_index -= cnt_ones;
         }
     }
-
-    /*
-     *
-     *  Unsetting the bit indices.
-     *  //TODO Can we do better than this?
-     * */
+}
 
 
+void bitmap_unset_indices_in_window(bitmap_t *bm, int *indices, int num_index) {
     /* Sort the indices.
      * Description: The rationale behind first soring and then unsetting is that, when the indices
      * are given in not-ordered fashion, then if we try to unset the first one, we loose the information
@@ -314,21 +295,8 @@ int bitmap_extract_signature_unset_index_in_window(bitmap_t *bm, int *indices, i
 #ifdef JOURNAL
     bm->bitmap_report.cnt_count_unset++;
 #endif
-    return BITMAP_UNSET_BITS_SUCCESS;
 }
 
-
-void bitmap_display(bitmap_t *bm) {
-    printf("---------ROWs---------\n");
-    row_t *row = bm->bitmap_matrix.head;
-    while (row) {
-        printf("> (%d) ", row->set_bits);
-        for (int j = 0; j < bm->cB; j++)
-            printf("%d ", row->data[j]);
-        printf("\n");
-        row = row->next;
-    }
-}
 
 #ifdef JOURNAL
 

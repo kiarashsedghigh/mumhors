@@ -56,7 +56,7 @@ int main(int argc, char **argv) {
     t = 1024;
     k = 16;
     r = 16385;
-    l=256;
+    l = 256;
     rt = 12;
     tests = 1048576;
     /* Generating the public key from the seed to be provisioned to the verifier.
@@ -97,21 +97,22 @@ int main(int argc, char **argv) {
     /* Creating randomized messages */
     for (int i = 0; i < tests; i++) {
         gettimeofday(&start_time, NULL);
-        if (mumhors_sign_message(&signer, message, SHA256_OUTPUT_LEN) == SIGN_NO_MORE_ROW_FAILED){
+        if (mumhors_sign_message(&signer, message, SHA256_OUTPUT_LEN) == SIGN_NO_MORE_ROW_FAILED) {
             debug("[Signer] No more rows are left to sign", DEBUG_INF);
             break;
         }
         gettimeofday(&end_time, NULL);
-        sign_and_verify+=(end_time.tv_sec - start_time.tv_sec) + (end_time.tv_usec - start_time.tv_usec) / 1.0e6;
+        sign_and_verify += (end_time.tv_sec - start_time.tv_sec) + (end_time.tv_usec - start_time.tv_usec) / 1.0e6;
 
         gettimeofday(&start_time, NULL);
 
-        if (mumhors_verify_message(&verifier, signer.signature, message, SHA256_OUTPUT_LEN) == VERIFY_FAILED){
-            printf("[Verifier] Signature verification failed %d\n", i);
+        if (mumhors_verify_signature(&verifier, signer.signature, message, SHA256_OUTPUT_LEN) ==
+            VERIFY_SIGNATURE_INVALID) {
+            printf("[Verifier] Signature verification invalid %d\n", i);
             break;
         }
         gettimeofday(&end_time, NULL);
-        sign_and_verify+=(end_time.tv_sec - start_time.tv_sec) + (end_time.tv_usec - start_time.tv_usec) / 1.0e6;
+        sign_and_verify += (end_time.tv_sec - start_time.tv_sec) + (end_time.tv_usec - start_time.tv_usec) / 1.0e6;
 
         ltc_hash_sha2_256(hash, message, SHA256_OUTPUT_LEN);
 
