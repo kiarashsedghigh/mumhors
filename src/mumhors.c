@@ -1,10 +1,9 @@
-#include <mumhors/mumhors.h>
-#include <mumhors/bitmap.h>
-#include <mumhors/sort.h>
-#include <mumhors/math.h>
-#include <mumhors/bits.h>
-#include <mumhors/hash.h>
-#include <math.h>
+#include "mumhors.h"
+#include "bitmap.h"
+#include "sort.h"
+#include "math.h"
+#include "bits.h"
+#include "hash.h"
 #include <stdlib.h>
 #include <string.h>
 

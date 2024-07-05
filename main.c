@@ -1,12 +1,12 @@
-#include <mumhors/bitmap.h>
-#include <mumhors/debug.h>
-#include <mumhors/sort.h>
-#include <mumhors/mumhors.h>
-#include <mumhors/hash.h>
-
+#include "bitmap.h"
+#include "debug.h"
+#include "sort.h"
+#include "mumhors.h"
+#include "hash.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <sys/time.h>
+
 
 void generate_rands(int *arr, int k, int t) {
     int in, im;

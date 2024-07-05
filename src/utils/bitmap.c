@@ -1,6 +1,8 @@
-#include <mumhors/bitmap.h>
-#include <mumhors/sort.h>
-#include <mumhors/math.h>
+#include "bitmap.h"
+#include "sort.h"
+#include "math.h"
+
+
 #include <string.h>
 #include <stdlib.h>
 #include <assert.h>

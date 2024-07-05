@@ -3,7 +3,7 @@ project(mumhors)
 
 set(CMAKE_CXX_STANDARD 14)
 
-include_directories(src/utils)
+include_directories(src src/utils src/crypto)
 
 add_compile_options(-O3 -w -DJOURNAL )
 #add_link_options(-ltomcrypt)
@@ -38,7 +38,7 @@ add_executable(mumhors
         src/mumhors.c
         src/mumhors.h
         src/crypto/sha2.c
-        src/hash.h
+        src/crypto/hash.h
         src/utils/bits.c
         src/utils/bits.h)
 
