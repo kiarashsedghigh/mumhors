@@ -12,6 +12,12 @@
 #define SIGN_SUCCESS 0
 #define SIGN_NO_MORE_ROW_FAILED 1
 
+/// Struct for MUMHORS signature
+typedef struct mumhors_signature {
+    unsigned char *signature;   /* Signature of the message signed by the signer */
+    unsigned int ctr;           /* Weak message counter */
+}mumhors_signature_t;
+
 /// Struct for MUMHORS signer
 typedef struct mumhors_signer {
     unsigned char *seed;    /* Seed to generate the private keys and signatures */
@@ -22,7 +28,7 @@ typedef struct mumhors_signer {
     int rt;                 /* Bitmap threshold (maximum) rows to allocate */
     int r;                  /* Number of bitmap matrix rows */
     bitmap_t bm;            /* Bitmap for managing the private key utilization */
-    unsigned char *signature;   /* Signature of the message signed by the signer */
+    mumhors_signature_t signature;   /* Signature of the message signed by the signer */
 } mumhors_signer_t;
 
 /// Public key node
@@ -110,6 +116,6 @@ int mumhors_sign_message(mumhors_signer_t *signer, unsigned char *message, int m
 /// \param message Pointer to the message
 /// \param message_len Message's length
 /// \return
-int mumhors_verify_signature(mumhors_verifier_t *verifier, unsigned char *signature,
+int mumhors_verify_signature(mumhors_verifier_t *verifier,  mumhors_signature_t *signature,
                              unsigned char *message, int message_len);
 #endif

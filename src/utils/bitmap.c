@@ -1,8 +1,6 @@
 #include "bitmap.h"
 #include "sort.h"
 #include "math.h"
-
-
 #include <string.h>
 #include <stdlib.h>
 #include <assert.h>
@@ -119,7 +117,6 @@ static int bitmap_row_cleanup(bitmap_t *bm) {
             bitmap_free_row(target_to_delete);
             bm->active_rows--;
             cleaned_rows++;
-
         } else
             row = row->next;
     }
@@ -233,7 +230,8 @@ void bitmap_get_row_colum_with_index(bitmap_t *bm, int target_index, int *row_nu
 
     /* The current row contains the desired index */
     for (int j = 0; j < bm->cB; j++) {
-        if (row->data[j]) { // Skip 0 bytes
+        if (row->data[j]) {
+            // Skip 0 bytes
             int cnt_ones = count_num_set_bits(row->data[j]);
             if (target_index < cnt_ones) {
                 /* Find the real index of the target_index'th bit in the current byte */
@@ -280,7 +278,8 @@ void bitmap_unset_indices_in_window(bitmap_t *bm, int *indices, int num_index) {
 
         /* The current row contains the desired index */
         for (int j = 0; j < bm->cB; j++) {
-            if (row->data[j]) { // Skip 0 bytes
+            if (row->data[j]) {
+                // Skip 0 bytes
                 int cnt_ones = count_num_set_bits(row->data[j]);
                 if (target_index < cnt_ones) {
                     /* Find the real index of the target_index'th bit in the current byte */
@@ -303,10 +302,10 @@ void bitmap_unset_indices_in_window(bitmap_t *bm, int *indices, int num_index) {
 #ifdef JOURNAL
 
 void bitmap_report(bitmap_t *bm) {
-    printf("\n----------REPORT--------\n");
-    printf("Cleanup calls: %d\n", bm->bitmap_report.cnt_cleanup_call);
-    printf("Alloc calls: %d\n", bm->bitmap_report.cnt_alloc_more_rows);
-    printf("Unset calls: %d\n", bm->bitmap_report.cnt_count_unset);
+    printf("\n----------Bitmap Report--------\n");
+    printf("Row cleanup calls: %d\n", bm->bitmap_report.cnt_cleanup_call);
+    printf("Row alloc calls: %d\n", bm->bitmap_report.cnt_alloc_more_rows);
+    printf("Index unsetting calls: %d\n", bm->bitmap_report.cnt_count_unset);
     printf("Discarded bits: %d/%d\n", bm->bitmap_report.cnt_discarded_bits, bm->r * BYTES2BITS(bm->cB));
 }
 
