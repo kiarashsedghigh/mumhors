@@ -44,6 +44,6 @@ add_custom_command(TARGET mumhors POST_BUILD
 )
 
 # Optionally add a custom target to explicitly copy the executable
-add_custom_target(copy_mumhors_to_test ALL DEPENDS mumhors
+add_custom_target(test ALL DEPENDS mumhors
         COMMENT "Building and copying mumhors executable to test folder"
 )

@@ -25,19 +25,15 @@ To build the binary:
 ```
 mkdir build
 cd buid
-cmake ../
-make
-```
-To install the binary and header files
-```
-sudo make install
+cmake ../ .
+cmake --build . --target test
 ```
 
 # Running
 To run the program:
 ```
-muhors T K L IR RT TESTS 
+test/muhors T K L R RT TESTS SEED_FILE 
 ```
-where `T` and `K` are HORS parameters, `IR` denotes the number
-of initial rows to be allocated, `RT` denotes row threshold (maximum number of rows), and
-`TESTS` denotes number of test cases.
+where `T` and `K` are HORS parameters, `R` denotes the totla number
+of rows to be allocated, `RT` denotes row threshold (maximum number of rows),
+`TESTS` denotes number of test cases, and `SEED_FILE` is the path to the seed file.
