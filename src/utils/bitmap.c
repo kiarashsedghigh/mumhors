@@ -19,6 +19,8 @@ static void bitmap_free_row(row_t *row) {
 /// \param bm Pointer to the bitmap structure
 /// \param row Pointer to the new row
 static void bitmap_matrix_list_add_row(bitmap_t *bm, row_t *row) {
+    assert(bm!=NULL);
+
     if (!bm->bitmap_matrix.head) {
         bm->bitmap_matrix.head = row;
         bm->bitmap_matrix.tail = row;
