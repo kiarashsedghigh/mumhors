@@ -10,7 +10,7 @@ public keys, is maximum. This project introduces a novel bitmap data structure d
 1. **Linked List**
 2. **Circular Queue**
 
-Each implementation is tailored to different use cases, offering flexibility depending on the system's requirements.
+Each implementation `(src/utils/bitmap.c)` is tailored to different use cases, offering flexibility depending on the system's requirements.
 
 ### Bitmap Variants
 
@@ -51,7 +51,7 @@ with bitmap as array:
 ```
 cmake -S .. -B . -DCMAKE_C_FLAGS="-DBITMAP_ARRAY -DROW_THRESHOLD=RT -DBIT_VECTOR=VECTOR_SIZE"
 ```
-where `VECTOR_SIZE` is in Bytes.
+where `VECTOR_SIZE` is in bits.
 
 # Running
 To run the program:
@@ -66,7 +66,7 @@ seed file manually if no exists.
 # Example
 ## Build
 ```
-build/$ cmake -S .. -B . -DCMAKE_C_FLAGS="-DBITMAP_ARRAY -DROW_THRESHOLD=11 -DBIT_VECTOR=128"
+build/$ cmake -S .. -B . -DCMAKE_C_FLAGS="-DBITMAP_ARRAY -DROW_THRESHOLD=11 -DBIT_VECTOR=1024"
 ```
 
 ## Run 

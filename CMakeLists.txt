@@ -28,5 +28,4 @@ add_executable(mumhors
         src/crypto/hash.h
         src/utils/bits.c
         src/utils/bits.h
-        src/utils/temp.c
 )
