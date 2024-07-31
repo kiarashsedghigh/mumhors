@@ -25,8 +25,14 @@ To build the binary:
 ```
 mkdir build
 cd buid
-cmake ../ .
-cmake --build . --target test
+```
+with bitmap as linked list:
+```
+cmake -S .. -B . -DCMAKE_C_FLAGS="-DBITMAP_LIST"
+```
+with bitmap as array:
+```
+cmake -S .. -B . -DCMAKE_C_FLAGS="-DBITMAP_ARRAY -DROW_THRESHOLD=RT"
 ```
 
 # Running
