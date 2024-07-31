@@ -11,8 +11,8 @@
 /// Freeing a row of the Bitmap
 /// \param row Pointer to the row
 static void bitmap_free_row(row_t *row) {
-    free(row->data);
 #ifdef BITMAP_LIST
+    free(row->data);
     free(row); /* Only in the linked list representation, rows are allocated from the heap */
 #endif
 }
@@ -79,6 +79,7 @@ void bitmap_init(bitmap_t *bm, int rows, int cols, int row_threshold, int window
     }
 
 #elif BITMAP_ARRAY
+
     for (int i = 0; i < bm->rt; i++) {
         if (bm->bitmap_matrix.head == -1)
             bm->bitmap_matrix.head = bm->bitmap_matrix.tail = 0;
@@ -88,13 +89,14 @@ void bitmap_init(bitmap_t *bm, int rows, int cols, int row_threshold, int window
             bm->bitmap_matrix.tail++;
 
         row_t *new_row = &bm->bitmap_matrix.rows[bm->bitmap_matrix.tail];
-        new_row->data = malloc(sizeof(unsigned char *) * bm->cB);
         new_row->number = i;
         new_row->set_bits = BYTES2BITS(bm->cB);
 
         /* Initializing the vector to all 1s */
         for (int j = 0; j < bm->cB; j++) new_row->data[j] = 0xff;
     }
+
+
 #endif
 }
 
@@ -106,17 +108,6 @@ void bitmap_delete(bitmap_t *bm) {
         curr = curr->next;
         /* Deleting the rows data */
         bitmap_free_row(target);
-    }
-#elif BITMAP_ARRAY
-    if (bm->bitmap_matrix.tail >= bm->bitmap_matrix.head) {
-        for (int i = bm->bitmap_matrix.head; i <= bm->bitmap_matrix.tail; i++)
-            bitmap_free_row(&bm->bitmap_matrix.rows[i]);
-    } else {
-        for (int i = bm->bitmap_matrix.head; i < bm->bitmap_matrix.size; i++)
-            bitmap_free_row(&bm->bitmap_matrix.rows[i]);
-
-        for (int i = 0; i <= bm->bitmap_matrix.tail; i++)
-            bitmap_free_row(&bm->bitmap_matrix.rows[i]);
     }
 #endif
 }
@@ -144,7 +135,6 @@ static int bitmap_remove_row_by_index(bitmap_t *bm, int index) {
     /* Remove the row */
     bm->set_bits -= bm->bitmap_matrix.rows[index].set_bits;
     bm->active_rows--;
-    bitmap_free_row(&bm->bitmap_matrix.rows[index]);
 
     /* Handling the boundaries */
     /* Removing head */
@@ -356,7 +346,6 @@ static int bitmap_allocate_more_row(bitmap_t *bm) {
             bm->bitmap_matrix.tail++;
 
         row_t *new_row = &bm->bitmap_matrix.rows[bm->bitmap_matrix.tail];
-        new_row->data = malloc(sizeof(unsigned char *) * bm->cB);
         new_row->number = bm->nxt_row_number;
         new_row->set_bits = BYTES2BITS(bm->cB);
 
@@ -383,12 +372,12 @@ int bitmap_extend_matrix(bitmap_t *bm) {
 
 
 #ifdef BITMAP_ARRAY
-#define CHECK_IF_ROW_HAS_DESIRED_BIT() \
-    {if (target_index < bm->bitmap_matrix.rows[i].set_bits) { \
-        row = &bm->bitmap_matrix.rows[i]; \
+#define CHECK_IF_ROW_HAS_DESIRED_BIT(index) \
+    {if (target_index < bm->bitmap_matrix.rows[index].set_bits) { \
+        row = &bm->bitmap_matrix.rows[index]; \
         goto extract_manipulate_indices; \
     } \
-    target_index -= bm->bitmap_matrix.rows[i].set_bits;}
+    target_index -= bm->bitmap_matrix.rows[index].set_bits;}
 #endif
 
 void bitmap_get_row_colum_with_index(bitmap_t *bm, int target_index, int *row_num, int *col_num) {
@@ -405,14 +394,14 @@ void bitmap_get_row_colum_with_index(bitmap_t *bm, int target_index, int *row_nu
 
 #elif BITMAP_ARRAY
     if (bm->bitmap_matrix.head <= bm->bitmap_matrix.tail) {
-        for (int i = bm->bitmap_matrix.head; i <= bm->bitmap_matrix.tail; i++)
-            CHECK_IF_ROW_HAS_DESIRED_BIT()
+        for (int index = bm->bitmap_matrix.head; index <= bm->bitmap_matrix.tail; index++)
+            CHECK_IF_ROW_HAS_DESIRED_BIT(index)
     } else {
-        for (int i = bm->bitmap_matrix.head; i < bm->bitmap_matrix.size; i++)
-            CHECK_IF_ROW_HAS_DESIRED_BIT()
+        for (int index = bm->bitmap_matrix.head; index < bm->bitmap_matrix.size; index++)
+            CHECK_IF_ROW_HAS_DESIRED_BIT(index)
 
-        for (int i = 0; i <= bm->bitmap_matrix.tail; i++)
-            CHECK_IF_ROW_HAS_DESIRED_BIT()
+        for (int index = 0; index <= bm->bitmap_matrix.tail; index++)
+            CHECK_IF_ROW_HAS_DESIRED_BIT(index)
     }
 
 #endif
@@ -469,14 +458,14 @@ void bitmap_unset_indices_in_window(bitmap_t *bm, int *indices, int num_index) {
         }
 #elif BITMAP_ARRAY
         if (bm->bitmap_matrix.head <= bm->bitmap_matrix.tail) {
-            for (int i = bm->bitmap_matrix.head; i <= bm->bitmap_matrix.tail; i++)
-                CHECK_IF_ROW_HAS_DESIRED_BIT()
+            for (int index = bm->bitmap_matrix.head; index <= bm->bitmap_matrix.tail; index++)
+                CHECK_IF_ROW_HAS_DESIRED_BIT(index)
         } else {
-            for (int i = bm->bitmap_matrix.head; i < bm->bitmap_matrix.size; i++)
-                CHECK_IF_ROW_HAS_DESIRED_BIT()
+            for (int index = bm->bitmap_matrix.head; index < bm->bitmap_matrix.size; index++)
+                CHECK_IF_ROW_HAS_DESIRED_BIT(index)
 
-            for (int i = 0; i <= bm->bitmap_matrix.tail; i++)
-                CHECK_IF_ROW_HAS_DESIRED_BIT()
+            for (int index = 0; index <= bm->bitmap_matrix.tail; index++)
+                CHECK_IF_ROW_HAS_DESIRED_BIT(index)
         }
 
 #endif

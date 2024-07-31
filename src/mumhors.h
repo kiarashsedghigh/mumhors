@@ -1,5 +1,6 @@
 #ifndef MUMHORS_MUMHORS_H
 #define MUMHORS_MUMHORS_H
+
 #include "bitmap.h"
 
 #define PKMATRIX_MORE_ROW_ALLOCATION_SUCCESS 0

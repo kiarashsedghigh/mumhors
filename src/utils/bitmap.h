@@ -18,11 +18,13 @@ typedef struct bitmap_journaling {
 
 /// Row data structure to represent each row with its meta parameters and data
 typedef struct row {
-    int number; /* Row number */
-    int set_bits; /* Number of set bits (1s) in the row */
-    unsigned char *data; /* The pointer to the bytes of the row */
+    int number;             /* Row number */
+    int set_bits;           /* Number of set bits (1s) in the row */
 #ifdef BITMAP_LIST
-    struct row *next; /* Pointer to the next row in the list */
+    unsigned char *data;    /* The pointer to the bytes of the row in list structure */
+    struct row *next;       /* Pointer to the next row in the list */
+#elif BITMAP_ARRAY
+    unsigned char data[BIT_VECTOR/8];    /* The pointer to the bytes of the row in array structure */
 #endif
 } row_t;
 

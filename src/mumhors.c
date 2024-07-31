@@ -150,10 +150,8 @@ int mumhors_sign_message(mumhors_signer_t *signer, const unsigned char *message,
      * through a process known as rejection sampling. */
     signer->signature.ctr = perform_rejection_sampling(message, message_len, signer->k, signer->t, message_indices);
 
-
     for (int i = 0; i < signer->k; i++) {
         int row_number, col_number;
-
         /* Getting the row and colum numbers for the given index */
         bitmap_get_row_colum_with_index(&signer->bm, message_indices[i], &row_number, &col_number);
 
@@ -398,6 +396,7 @@ static int verify_signature_using_virtual_matrix(mumhors_verifier_t *verifier, i
      * */
     /* First sort the indices */
     merge_sort(indices, 0, num_indices - 1);
+
 
     int index_diff = 0;
     for (int i = 0; i < num_indices; i++) {

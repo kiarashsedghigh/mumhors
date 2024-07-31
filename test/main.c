@@ -1,4 +1,3 @@
-#include "bitmap.h"
 #include "debug.h"
 #include "mumhors.h"
 #include "hash.h"
@@ -86,9 +85,8 @@ int main(int argc, char **argv) {
         /* Creating randomized messages */
         int message_index;
         for (message_index = 0; message_index < tests; message_index++) {
-            printf("\r[%d/%d]", message_index, tests);  // Print the number and move cursor to the start of the line
-            fflush(stdout);     // Ensure the output is immediately printed
-
+            printf("\r[%d/%d]", message_index, tests);
+            fflush(stdout);
             gettimeofday(&start_time, NULL);
             if (mumhors_sign_message(&signer, message, SHA256_OUTPUT_LEN) == SIGN_NO_MORE_ROW_FAILED) {
                 debug("\n[Signer] No more rows are left to sign", DEBUG_INF);
@@ -96,7 +94,6 @@ int main(int argc, char **argv) {
             }
             gettimeofday(&end_time, NULL);
             sign_time += (end_time.tv_sec - start_time.tv_sec) + (end_time.tv_usec - start_time.tv_usec) / 1.0e6;
-
             gettimeofday(&start_time, NULL);
             if (mumhors_verify_signature(&verifier, &signer.signature, message, SHA256_OUTPUT_LEN) ==
                 VERIFY_SIGNATURE_INVALID) {
