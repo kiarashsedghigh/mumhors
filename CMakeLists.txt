@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD 23)
 
 include_directories(src src/utils src/crypto)
 
-add_compile_options(-O3 -w -DBITMAP_ARRAY -DROW_THRESHOLD=12 -DBIT_VECTOR=1024)
+add_compile_options(-O3 -w)
 #
 
 link_libraries(tomcrypt m)
