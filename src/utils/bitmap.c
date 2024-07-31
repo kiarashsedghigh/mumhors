@@ -1,10 +1,10 @@
-#include "bitmap.h"
-#include "sort.h"
-#include "math.h"
 #include <string.h>
 #include <stdlib.h>
 #include <assert.h>
 #include <stdio.h>
+#include "bitmap.h"
+#include "sort.h"
+#include "math.h"
 
 #define BYTES2BITS(x) (x*8)
 
@@ -12,24 +12,22 @@
 /// \param row Pointer to the row
 static void bitmap_free_row(row_t *row) {
     free(row->data);
-    free(row);
+#ifdef BITMAP_LIST
+    free(row); /* Only in the linked list representation, rows are allocated from the heap */
+#endif
 }
 
-/// Adds a row to the matrix of rows
-/// \param bm Pointer to the bitmap structure
-/// \param row Pointer to the new row
-static void bitmap_matrix_list_add_row(bitmap_t *bm, row_t *row) {
-    assert(bm!=NULL);
 
-    if (!bm->bitmap_matrix.head) {
-        bm->bitmap_matrix.head = row;
-        bm->bitmap_matrix.tail = row;
-    } else {
-        bm->bitmap_matrix.tail->next = row;
-        bm->bitmap_matrix.tail = row;
-    }
+/// Macro function for adding a row to the linked list of rows
+/// @param row Pointer to the row to be added to the list
+#define BITMAP_LIST_ADD_ROW(row) \
+    if (!bm->bitmap_matrix.head) {\
+        bm->bitmap_matrix.head = row;\
+        bm->bitmap_matrix.tail = row;\
+    } else {\
+        bm->bitmap_matrix.tail->next = row;\
+        bm->bitmap_matrix.tail = row;\
 }
-
 
 void bitmap_init(bitmap_t *bm, int rows, int cols, int row_threshold, int window_size) {
     /* Simple parameter check. This check has been done in this way for simplicity!! */
@@ -41,8 +39,16 @@ void bitmap_init(bitmap_t *bm, int rows, int cols, int row_threshold, int window
     bm->cB = cols / 8;
     bm->rt = row_threshold;
     bm->window_size = window_size;
+#ifdef BITMAP_LIST
+    bm->bitmap_matrix.head = NULL;
+    bm->bitmap_matrix.tail = NULL;
+#elif BITMAP_ARRAY
+    bm->bitmap_matrix.head = -1;
+    bm->bitmap_matrix.tail = -1;
+    bm->bitmap_matrix.size = bm->rt;
+#endif
 
-    /* Allocate the full capacity of the matrix */
+    /* Allocate the full capacity of the bitmap */
     bm->nxt_row_number = bm->rt;
     bm->active_rows = bm->rt;
     bm->set_bits = bm->rt * BYTES2BITS(bm->cB);
@@ -54,10 +60,9 @@ void bitmap_init(bitmap_t *bm, int rows, int cols, int row_threshold, int window
     bm->bitmap_report.cnt_count_unset = 0;
     bm->bitmap_report.cnt_discarded_bits = 0;
 #endif
-    /* Initializing the matrix of rows */
-    bm->bitmap_matrix.head = NULL;
-    bm->bitmap_matrix.tail = NULL;
 
+
+#ifdef BITMAP_LIST
     /* Creating the rows and adding them to the matrix */
     for (int i = 0; i < bm->rt; i++) {
         row_t *new_row = malloc(sizeof(row_t));
@@ -70,11 +75,31 @@ void bitmap_init(bitmap_t *bm, int rows, int cols, int row_threshold, int window
         for (int j = 0; j < bm->cB; j++) new_row->data[j] = 0xff;
 
         /* Adding the row to the matrix */
-        bitmap_matrix_list_add_row(bm, new_row);
+        BITMAP_LIST_ADD_ROW(new_row);
     }
+
+#elif BITMAP_ARRAY
+    for (int i = 0; i < bm->rt; i++) {
+        if (bm->bitmap_matrix.head == -1)
+            bm->bitmap_matrix.head = bm->bitmap_matrix.tail = 0;
+        else if (bm->bitmap_matrix.tail == bm->bitmap_matrix.size - 1)
+            bm->bitmap_matrix.tail = 0;
+        else
+            bm->bitmap_matrix.tail++;
+
+        row_t *new_row = &bm->bitmap_matrix.rows[bm->bitmap_matrix.tail];
+        new_row->data = malloc(sizeof(unsigned char *) * bm->cB);
+        new_row->number = i;
+        new_row->set_bits = BYTES2BITS(bm->cB);
+
+        /* Initializing the vector to all 1s */
+        for (int j = 0; j < bm->cB; j++) new_row->data[j] = 0xff;
+    }
+#endif
 }
 
 void bitmap_delete(bitmap_t *bm) {
+#ifdef BITMAP_LIST
     row_t *curr = bm->bitmap_matrix.head;
     while (curr) {
         row_t *target = curr;
@@ -82,9 +107,76 @@ void bitmap_delete(bitmap_t *bm) {
         /* Deleting the rows data */
         bitmap_free_row(target);
     }
-    bm->bitmap_matrix.head = NULL;
-    bm->bitmap_matrix.tail = NULL;
+#elif BITMAP_ARRAY
+    if (bm->bitmap_matrix.tail >= bm->bitmap_matrix.head) {
+        for (int i = bm->bitmap_matrix.head; i <= bm->bitmap_matrix.tail; i++)
+            bitmap_free_row(&bm->bitmap_matrix.rows[i]);
+    } else {
+        for (int i = bm->bitmap_matrix.head; i < bm->bitmap_matrix.size; i++)
+            bitmap_free_row(&bm->bitmap_matrix.rows[i]);
+
+        for (int i = 0; i <= bm->bitmap_matrix.tail; i++)
+            bitmap_free_row(&bm->bitmap_matrix.rows[i]);
+    }
+#endif
 }
+
+
+#ifdef BITMAP_ARRAY
+#define SHIFT_FROM_HEAD_TO_CURRENT_INDEX_AND_UPDATE_HEAD() \
+    for(int row = index - 1; row >= bm->bitmap_matrix.head ; row--) \
+        bm->bitmap_matrix.rows[row+1] = bm->bitmap_matrix.rows[row]; \
+    bm->bitmap_matrix.head = floor_add_mod(bm->bitmap_matrix.head + 1 , bm->bitmap_matrix.size) ;
+#define SHIFT_FROM_TAIL_TO_CURRENT_INDEX_AND_UPDATE_HEAD() \
+    for(int i = index + 1; i <= bm->bitmap_matrix.tail ; i++) \
+        bm->bitmap_matrix.rows[i-1] = bm->bitmap_matrix.rows[i]; \
+    bm->bitmap_matrix.tail = floor_add_mod(bm->bitmap_matrix.tail - 1 , bm->bitmap_matrix.size) ;
+
+/// Removing a row from the array of rows and return the next index to be used
+/// \param bm Pointer to the bitmap structure
+/// @param index Index of the target row
+/// @return Index of the next row to be used
+static int bitmap_remove_row_by_index(bitmap_t *bm, int index) {
+#ifdef JOURNAL
+    bm->bitmap_report.cnt_discarded_bits += bm->bitmap_matrix.rows[index].set_bits;
+#endif
+
+    /* Remove the row */
+    bm->set_bits -= bm->bitmap_matrix.rows[index].set_bits;
+    bm->active_rows--;
+    bitmap_free_row(&bm->bitmap_matrix.rows[index]);
+
+    /* Handling the boundaries */
+    /* Removing head */
+    if (index == bm->bitmap_matrix.head) {
+        bm->bitmap_matrix.head = floor_add_mod(bm->bitmap_matrix.head + 1, bm->bitmap_matrix.size);
+        return floor_add_mod(bm->bitmap_matrix.head - 1, bm->bitmap_matrix.size);
+    }
+    /* Removing tail */
+    if (index == bm->bitmap_matrix.tail) {
+        bm->bitmap_matrix.tail = floor_add_mod(bm->bitmap_matrix.tail - 1, bm->bitmap_matrix.size);
+        return floor_add_mod(bm->bitmap_matrix.tail - 1, bm->bitmap_matrix.size);
+    }
+
+    /* If head < tail */
+    if (bm->bitmap_matrix.head <= bm->bitmap_matrix.tail) {
+        if (index <= (bm->bitmap_matrix.tail - bm->bitmap_matrix.head) / 2) {
+            SHIFT_FROM_HEAD_TO_CURRENT_INDEX_AND_UPDATE_HEAD()
+            return index;
+        }
+        SHIFT_FROM_TAIL_TO_CURRENT_INDEX_AND_UPDATE_HEAD()
+        return index - 1;
+    }
+    /* If tail < head */
+    if (index > bm->bitmap_matrix.head && index < bm->bitmap_matrix.size) {
+        SHIFT_FROM_HEAD_TO_CURRENT_INDEX_AND_UPDATE_HEAD()
+        return index;
+    }
+    SHIFT_FROM_TAIL_TO_CURRENT_INDEX_AND_UPDATE_HEAD()
+    return index - 1;
+}
+#endif
+
 
 /// Cleanup the matrix by removing the rows that have no set bits left to use
 /// \param bm Pointer to the bitmap structure
@@ -96,6 +188,7 @@ static int bitmap_row_cleanup(bitmap_t *bm) {
     /* Count the number of cleaned rows */
     int cleaned_rows = 0;
 
+#ifdef BITMAP_LIST
     row_t *row = bm->bitmap_matrix.head;
     while (row) {
         if (!row->set_bits) {
@@ -122,6 +215,30 @@ static int bitmap_row_cleanup(bitmap_t *bm) {
         } else
             row = row->next;
     }
+#elif BITMAP_ARRAY
+    if (bm->bitmap_matrix.head <= bm->bitmap_matrix.tail) {
+        for (int row_index = bm->bitmap_matrix.head; row_index <= bm->bitmap_matrix.tail; row_index++) {
+            if (bm->bitmap_matrix.rows[row_index].set_bits == 0) {
+                row_index = bitmap_remove_row_by_index(bm, row_index);
+                cleaned_rows++;
+            }
+        }
+    } else {
+        for (int row_index = bm->bitmap_matrix.head; row_index < bm->bitmap_matrix.size; row_index++) {
+            if (bm->bitmap_matrix.rows[row_index].set_bits == 0) {
+                row_index = bitmap_remove_row_by_index(bm, row_index);
+                if (bm->bitmap_matrix.head == 0) break; /* If head goes from end of array to the beginning */
+                cleaned_rows++;
+            }
+        }
+        for (int row_index = 0; row_index <= bm->bitmap_matrix.tail; row_index++) {
+            if (bm->bitmap_matrix.rows[row_index].set_bits == 0) {
+                row_index = bitmap_remove_row_by_index(bm, row_index);
+                cleaned_rows++;
+            }
+        }
+    }
+#endif
     return cleaned_rows;
 }
 
@@ -129,7 +246,8 @@ static int bitmap_row_cleanup(bitmap_t *bm) {
 /// Remove a row from the bitmap matrix based on its index
 /// \param bm Pointer to the bitmap structure
 /// \param row Pointer to the row
-static void bitmap_remove_row(bitmap_t *bm, row_t *row) {
+#ifdef BITMAP_LIST
+static void bitmap_list_remove_row(bitmap_t *bm, row_t *row) {
     if (row == bm->bitmap_matrix.head)
         bm->bitmap_matrix.head = bm->bitmap_matrix.head->next;
     else {
@@ -149,7 +267,16 @@ static void bitmap_remove_row(bitmap_t *bm, row_t *row) {
 #endif
     bitmap_free_row(row);
 }
+#endif
 
+
+#define BITMAP_AND_FIND_ROW_WITH_MINIMUM_BITS(start, end) \
+    for (int i = start; i <= end; i++) {\
+        if (bm->bitmap_matrix.rows[i].set_bits < max_set_bits) {\
+            max_set_bits = bm->bitmap_matrix.rows[i].set_bits;\
+            target_index = i;\
+        }\
+    }
 
 /// Allocate more new rows
 /// \param bm Pointer to the bitmap structure
@@ -158,6 +285,7 @@ static int bitmap_allocate_more_row(bitmap_t *bm) {
 #ifdef JOURNAL
     bm->bitmap_report.cnt_alloc_more_rows++;
 #endif
+
     /* Check if we have any row left to allocate */
     if (bm->nxt_row_number >= bm->r)
         return BITMAP_NO_MORE_ROWS_TO_ALLOCATE;
@@ -169,6 +297,8 @@ static int bitmap_allocate_more_row(bitmap_t *bm) {
          * the least number of set bits if no row was deleted */
         if (!bitmap_row_cleanup(bm)) {
             /* Clean up did not clean anything. So, finding the row with the fewest number of set bits */
+
+#ifdef BITMAP_LIST
             row_t *row = bm->bitmap_matrix.head;
             row_t *target_row;
             int max_set_bits = BYTES2BITS(bm->cB);
@@ -179,33 +309,65 @@ static int bitmap_allocate_more_row(bitmap_t *bm) {
                 }
                 row = row->next;
             }
-            bitmap_remove_row(bm, target_row);
+            bitmap_list_remove_row(bm, target_row);
+#elif BITMAP_ARRAY
+            int max_set_bits = BYTES2BITS(bm->cB);
+            int target_index = 0;
+            if (bm->bitmap_matrix.head <= bm->bitmap_matrix.tail) {
+                BITMAP_AND_FIND_ROW_WITH_MINIMUM_BITS(bm->bitmap_matrix.head, bm->bitmap_matrix.tail)
+            } else {
+                BITMAP_AND_FIND_ROW_WITH_MINIMUM_BITS(bm->bitmap_matrix.head, bm->bitmap_matrix.size)
+                BITMAP_AND_FIND_ROW_WITH_MINIMUM_BITS(0, bm->bitmap_matrix.tail)
+            }
+            bitmap_remove_row_by_index(bm, target_index);
+#endif
         }
     }
 
     /* Possible number of rows to allocate */
     int possible_number_of_rows = min(bm->rt - bm->active_rows, bm->r - bm->nxt_row_number);
+    bm->active_rows += possible_number_of_rows;
+    bm->set_bits += BYTES2BITS(bm->cB) * possible_number_of_rows;
 
-    /* Fill the matrix with more rows */
+#ifdef BITMAP_LIST
     for (int i = 0; i < possible_number_of_rows; i++) {
         row_t *new_row = malloc(sizeof(row_t));
         new_row->data = malloc(sizeof(unsigned char *) * bm->cB);
         new_row->number = bm->nxt_row_number;
         new_row->set_bits = BYTES2BITS(bm->cB);
         new_row->next = NULL;
-
         /* Initializing the vector to all 1s */
-        for (int j = 0; j < bm->cB; j++)
-            new_row->data[j] = 0xff;
+        for (int j = 0; j < bm->cB; j++) new_row->data[j] = 0xff;
 
         /* Updating the hyperparameters */
-        bm->active_rows++;
         bm->nxt_row_number++;
-        bm->set_bits += BYTES2BITS(bm->cB);
 
         /* Add the row to the matrix */
-        bitmap_matrix_list_add_row(bm, new_row);
+        BITMAP_LIST_ADD_ROW(new_row);
     }
+
+#elif BITMAP_ARRAY
+    for (int i = 0; i < possible_number_of_rows; i++) {
+        if (bm->bitmap_matrix.head == -1)
+            bm->bitmap_matrix.head = bm->bitmap_matrix.tail = 0;
+        else if ((bm->bitmap_matrix.tail == bm->bitmap_matrix.size - 1) && bm->bitmap_matrix.head != 0)
+            bm->bitmap_matrix.tail = 0;
+        else
+            bm->bitmap_matrix.tail++;
+
+        row_t *new_row = &bm->bitmap_matrix.rows[bm->bitmap_matrix.tail];
+        new_row->data = malloc(sizeof(unsigned char *) * bm->cB);
+        new_row->number = bm->nxt_row_number;
+        new_row->set_bits = BYTES2BITS(bm->cB);
+
+        /* Initializing the vector to all 1s */
+        for (int j = 0; j < bm->cB; j++) new_row->data[j] = 0xff;
+
+        /* Updating the hyperparameters */
+        bm->nxt_row_number++;
+    }
+
+#endif
     return BITMAP_MORE_ROW_ALLOCATION_SUCCESS;
 }
 
@@ -220,16 +382,42 @@ int bitmap_extend_matrix(bitmap_t *bm) {
 }
 
 
+#ifdef BITMAP_ARRAY
+#define CHECK_IF_ROW_HAS_DESIRED_BIT() \
+    {if (target_index < bm->bitmap_matrix.rows[i].set_bits) { \
+        row = &bm->bitmap_matrix.rows[i]; \
+        goto extract_manipulate_indices; \
+    } \
+    target_index -= bm->bitmap_matrix.rows[i].set_bits;}
+#endif
+
 void bitmap_get_row_colum_with_index(bitmap_t *bm, int target_index, int *row_num, int *col_num) {
+    row_t *row;
+
+#ifdef BITMAP_LIST
     /* Find the row containing our desired index */
-    row_t *row = bm->bitmap_matrix.head;
+    row = bm->bitmap_matrix.head;
     while (row) {
-        if (target_index < row->set_bits)
-            break;
+        if (target_index < row->set_bits) break;
         target_index -= row->set_bits;
         row = row->next;
     }
 
+#elif BITMAP_ARRAY
+    if (bm->bitmap_matrix.head <= bm->bitmap_matrix.tail) {
+        for (int i = bm->bitmap_matrix.head; i <= bm->bitmap_matrix.tail; i++)
+            CHECK_IF_ROW_HAS_DESIRED_BIT()
+    } else {
+        for (int i = bm->bitmap_matrix.head; i < bm->bitmap_matrix.size; i++)
+            CHECK_IF_ROW_HAS_DESIRED_BIT()
+
+        for (int i = 0; i <= bm->bitmap_matrix.tail; i++)
+            CHECK_IF_ROW_HAS_DESIRED_BIT()
+    }
+
+#endif
+
+extract_manipulate_indices:
     /* The current row contains the desired index */
     for (int j = 0; j < bm->cB; j++) {
         if (row->data[j]) {
@@ -269,15 +457,30 @@ void bitmap_unset_indices_in_window(bitmap_t *bm, int *indices, int num_index) {
         int target_index = indices[i] - index_diff;
         index_diff++;
 
+
+        row_t *row;
+#ifdef BITMAP_LIST
         /* Find the row containing our desired index */
-        row_t *row = bm->bitmap_matrix.head;
+        row = bm->bitmap_matrix.head;
         while (row) {
-            if (target_index < row->set_bits)
-                break;
+            if (target_index < row->set_bits) break;
             target_index -= row->set_bits;
             row = row->next;
         }
+#elif BITMAP_ARRAY
+        if (bm->bitmap_matrix.head <= bm->bitmap_matrix.tail) {
+            for (int i = bm->bitmap_matrix.head; i <= bm->bitmap_matrix.tail; i++)
+                CHECK_IF_ROW_HAS_DESIRED_BIT()
+        } else {
+            for (int i = bm->bitmap_matrix.head; i < bm->bitmap_matrix.size; i++)
+                CHECK_IF_ROW_HAS_DESIRED_BIT()
 
+            for (int i = 0; i <= bm->bitmap_matrix.tail; i++)
+                CHECK_IF_ROW_HAS_DESIRED_BIT()
+        }
+
+#endif
+    extract_manipulate_indices:
         /* The current row contains the desired index */
         for (int j = 0; j < bm->cB; j++) {
             if (row->data[j]) {
@@ -290,8 +493,8 @@ void bitmap_unset_indices_in_window(bitmap_t *bm, int *indices, int num_index) {
                     bm->set_bits--;
                     row->set_bits--;
                     break;
-                } else
-                    target_index -= cnt_ones;
+                }
+                target_index -= cnt_ones;
             }
         }
     }
@@ -302,14 +505,11 @@ void bitmap_unset_indices_in_window(bitmap_t *bm, int *indices, int num_index) {
 
 
 #ifdef JOURNAL
-
-void bitmap_report(bitmap_t *bm) {
+void bitmap_report(const bitmap_t *bm) {
     printf("\n----------Bitmap Report--------\n");
     printf("Row cleanup calls: %d\n", bm->bitmap_report.cnt_cleanup_call);
     printf("Row alloc calls: %d\n", bm->bitmap_report.cnt_alloc_more_rows);
     printf("Index unsetting calls: %d\n", bm->bitmap_report.cnt_count_unset);
     printf("Discarded bits: %d/%d\n", bm->bitmap_report.cnt_discarded_bits, bm->r * BYTES2BITS(bm->cB));
 }
-
 #endif
-

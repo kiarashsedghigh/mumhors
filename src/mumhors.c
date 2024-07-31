@@ -1,7 +1,4 @@
 #include "mumhors.h"
-
-#include <assert.h>
-
 #include "bitmap.h"
 #include "sort.h"
 #include "math.h"
@@ -9,8 +6,11 @@
 #include "hash.h"
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
+#include <stdio.h>
 
-void mumhors_pk_gen(public_key_matrix_t *pk_matrix, unsigned char *seed, int seed_len, int row, int col) {
+
+void mumhors_pk_gen(public_key_matrix_t *pk_matrix, const unsigned char *seed, int seed_len, int row, int col) {
     /* Initialize the linked list variables */
     pk_matrix->head = NULL;
     pk_matrix->tail = NULL;
@@ -72,7 +72,8 @@ void mumhors_delete_signer(mumhors_signer_t *signer) {
 }
 
 
-static int perform_rejection_sampling(unsigned char *message, int message_len, int k, int t, int *message_indices) {
+static int perform_rejection_sampling(const unsigned char *message, int message_len, int k, int t,
+    int *message_indices) {
     unsigned int ctr = 0;
     int *new_indices = malloc(sizeof(int) * k);
 
@@ -108,8 +109,9 @@ static int perform_rejection_sampling(unsigned char *message, int message_len, i
     return ctr;
 }
 
-static int check_rejection_sampling(unsigned char *message, int message_len, int k, int t, int *indices,
+static int check_rejection_sampling(const unsigned char *message, int message_len, int k, int t, int *indices,
                                     unsigned int ctr) {
+
     int *new_indices = malloc(sizeof(int) * k);
 
     /* Hash one time */
@@ -137,7 +139,7 @@ static int check_rejection_sampling(unsigned char *message, int message_len, int
     return 1;
 }
 
-int mumhors_sign_message(mumhors_signer_t *signer, unsigned char *message, int message_len) {
+int mumhors_sign_message(mumhors_signer_t *signer, const unsigned char *message, int message_len) {
     int *message_indices = malloc(sizeof(int) * signer->k);
 
     /* Hashing the message */
@@ -155,7 +157,7 @@ int mumhors_sign_message(mumhors_signer_t *signer, unsigned char *message, int m
         /* Getting the row and colum numbers for the given index */
         bitmap_get_row_colum_with_index(&signer->bm, message_indices[i], &row_number, &col_number);
 
-        /* Create the respective private key and build the signature */ //TODO optimize?
+        /* Create the respective private key and build the signature */
         unsigned char sk[SHA256_OUTPUT_LEN];
         unsigned char *new_seed = malloc(signer->seed_len + 4 + 4);
         memcpy(new_seed, signer->seed, signer->seed_len);
@@ -169,7 +171,6 @@ int mumhors_sign_message(mumhors_signer_t *signer, unsigned char *message, int m
     bitmap_unset_indices_in_window(&signer->bm, message_indices, signer->k);
     free(message_indices);
 
-    //TODO
     /* Extending the bitmap matrix for later usage. This can be optimized to be done every t/k messages */
     if (bitmap_extend_matrix(&signer->bm) == BITMAP_EXTENSION_FAILED)
         return SIGN_NO_MORE_ROW_FAILED;
@@ -193,7 +194,7 @@ mumhors_init_verifier(mumhors_verifier_t *verifier, public_key_matrix_t pk_matri
     verifier->pk_matrix = pk_matrix;
 }
 
-void mumhors_delete_verifier(mumhors_verifier_t *verifier) {
+void mumhors_delete_verifier(const mumhors_verifier_t *verifier) {
     /* The verifier is public key consumer and hence, it is responsible to deallocate the
      * memory allocated for it in the key generation function. This is required, as in MUM-HORS
      * a huge number of public keys are stored on the verifier side, which need to be removed as they are used
@@ -222,7 +223,7 @@ static int mumhors_verifier_cleanup_rows(mumhors_verifier_t *verifier) {
     /* Count the number of rows we cleaned */
     int cleaned_rows = 0;
     public_key_t *pk_row = verifier->pk_matrix.head;
-    public_key_t *prev;
+    // public_key_t *prev;
 
     /* Loop and remove the row with 0 remained public key */
     while (pk_row) {
@@ -230,7 +231,7 @@ static int mumhors_verifier_cleanup_rows(mumhors_verifier_t *verifier) {
             if (pk_row == verifier->pk_matrix.head)
                 verifier->pk_matrix.head = verifier->pk_matrix.head->next;
             else {
-                prev = verifier->pk_matrix.head;
+                public_key_t * prev = verifier->pk_matrix.head;
                 while (prev->next != pk_row) { prev = prev->next; }
                 prev->next = pk_row->next;
 
@@ -333,7 +334,7 @@ static int mumhors_verifier_alloc_row_virtually(mumhors_verifier_t *verifier) {
 /// \param signature Pointer to the signature
 /// \return VERIFY_SIGNATURE_INVALID or VERIFY_SIGNATURE_INVALID, or VERIFY_SIGNATURE_VALID
 static int verify_signature_using_virtual_matrix(mumhors_verifier_t *verifier, int *indices, int num_indices,
-                                                 unsigned char *signature) {
+                                                 const unsigned char *signature) {
     if (verifier->windows_size > verifier->active_pks) {
         if (mumhors_verifier_alloc_row_virtually(verifier) == PKMATRIX_NO_MORE_ROWS_TO_ALLOCATE)
             return VERIFY_SIGNATURE_INVALID;
@@ -359,7 +360,7 @@ static int verify_signature_using_virtual_matrix(mumhors_verifier_t *verifier, i
         }
 
         /* The current row contains the public key. Find the public key */
-        public_key_t *target_pk;
+        unsigned char *target_pk;
         for (int j = 0; j < verifier->c; j++) {
             if (pk_row->pks[j]) {
                 // If the PK is not NULL
@@ -437,8 +438,8 @@ static int verify_signature_using_virtual_matrix(mumhors_verifier_t *verifier, i
 }
 
 
-int mumhors_verify_signature(mumhors_verifier_t *verifier, mumhors_signature_t *signature, unsigned char *message,
-                             int message_len) {
+int mumhors_verify_signature(mumhors_verifier_t *verifier, const mumhors_signature_t *signature,
+                            const unsigned char *message, int message_len) {
     int *message_indices = malloc(sizeof(int) * verifier->k);
 
     /* Extract the indices from the hash of the message while ensuring they are different

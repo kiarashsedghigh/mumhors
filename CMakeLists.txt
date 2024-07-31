@@ -5,15 +5,13 @@ set(CMAKE_CXX_STANDARD 23)
 
 include_directories(src src/utils src/crypto)
 
-add_compile_options(-O3 -w -DJOURNAL )
+add_compile_options(-O3 -w -DJOURNAL -DBITMAP_LIST -DROW_THRESHOLD=12)
+# DBITMAP_ARRAY DBITMAP_LIST
 
 link_libraries(tomcrypt m)
 
-
 # Add executable
 add_executable(mumhors
-        src/utils/cqueue.c
-        src/utils/cqueue.h
         README.md
         test/main.c
         src/utils/bitmap.c
@@ -29,7 +27,8 @@ add_executable(mumhors
         src/crypto/sha2.c
         src/crypto/hash.h
         src/utils/bits.c
-        src/utils/bits.h)
+        src/utils/bits.h
+        )
 
 # Define the test folder relative to the build directory
 set(TEST_FOLDER "${CMAKE_BINARY_DIR}/../test")

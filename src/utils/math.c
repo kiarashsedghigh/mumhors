@@ -1,7 +1,7 @@
 #include "math.h"
 
-int min(int x, int y){
-    if(x<y)
+int min(int x, int y) {
+    if (x < y)
         return x;
     return y;
 }
@@ -19,7 +19,7 @@ int count_num_set_bits(int num) {
 
 int byte_get_index_nth_set(unsigned char byte, int nth) {
     int bit_idx = 0;
-    nth -= 1;   // Converting nth to 0-based index
+    nth -= 1; // Converting nth to 0-based index
     while (nth >= 0) {
         while ((byte & 128) != 128) {
             bit_idx++;
@@ -29,5 +29,5 @@ int byte_get_index_nth_set(unsigned char byte, int nth) {
         bit_idx++;
         nth--;
     }
-    return bit_idx-1;
+    return bit_idx - 1;
 }

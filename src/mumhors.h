@@ -14,49 +14,49 @@
 
 /// Struct for MUMHORS signature
 typedef struct mumhors_signature {
-    unsigned char *signature;   /* Signature of the message signed by the signer */
-    unsigned int ctr;           /* Weak message counter */
-}mumhors_signature_t;
+    unsigned char *signature; /* Signature of the message signed by the signer */
+    unsigned int ctr; /* Weak message counter */
+} mumhors_signature_t;
 
 /// Struct for MUMHORS signer
 typedef struct mumhors_signer {
-    unsigned char *seed;    /* Seed to generate the private keys and signatures */
-    int seed_len;           /* Size of the seed in terms of bytes */
-    int t;                  /* HORS t parameter */
-    int k;                  /* HORS k parameter */
-    int l;                  /* HORS l parameter */
-    int rt;                 /* Bitmap threshold (maximum) rows to allocate */
-    int r;                  /* Number of bitmap matrix rows */
-    bitmap_t bm;            /* Bitmap for managing the private key utilization */
-    mumhors_signature_t signature;   /* Signature of the message signed by the signer */
+    unsigned char *seed; /* Seed to generate the private keys and signatures */
+    int seed_len; /* Size of the seed in terms of bytes */
+    int t; /* HORS t parameter */
+    int k; /* HORS k parameter */
+    int l; /* HORS l parameter */
+    int rt; /* Bitmap threshold (maximum) rows to allocate */
+    int r; /* Number of bitmap matrix rows */
+    bitmap_t bm; /* Bitmap for managing the private key utilization */
+    mumhors_signature_t signature; /* Signature of the message signed by the signer */
 } mumhors_signer_t;
 
 /// Public key node
 typedef struct public_key {
-    int available_pks;          /* Number of available public keys */
-    int number;                 /* Public key row number */
-    unsigned char **pks;       /* An array of public keys */
-    struct public_key *next;    /* Pointer to the next row of the matrix */
+    int available_pks; /* Number of available public keys */
+    int number; /* Public key row number */
+    unsigned char **pks; /* An array of public keys */
+    struct public_key *next; /* Pointer to the next row of the matrix */
 } public_key_t;
 
 /// Public key matrix (linked list)
 typedef struct public_key_matrix {
-    public_key_t *head;         /* Pointer to the first public key row in the matrix */
-    public_key_t *tail;         /* Pointer to the last public key row in the matrix */
+    public_key_t *head; /* Pointer to the first public key row in the matrix */
+    public_key_t *tail; /* Pointer to the last public key row in the matrix */
 } public_key_matrix_t;
 
 /// Struct for MUMHORS verifier
 typedef struct mumhors_verifier {
-    int t;                      /* HORS t parameter */
-    int k;                      /* HORS k parameter */
-    int l;                      /* HORS l parameter */
-    int r;                      /* Total number of rows in public key matrix (=MUMHORS parameter l)*/
-    int c;                      /* Number of columns in public key matrix (=HORS parameter t)*/
-    int rt;                     /* Maximum rows to consider the matrix at a time */
-    int active_pks;             /* Number of available public keys in the active rows */
-    int windows_size;           /* Size of the window (#PKs) required for each operation. Same as Bitmap window size */
-    int nxt_row_number;         /* Next row number for allocating new row */
-    public_key_matrix_t pk_matrix;      /* Matrix (linked list) of public keys */
+    int t; /* HORS t parameter */
+    int k; /* HORS k parameter */
+    int l; /* HORS l parameter */
+    int r; /* Total number of rows in public key matrix (=MUMHORS parameter l)*/
+    int c; /* Number of columns in public key matrix (=HORS parameter t)*/
+    int rt; /* Maximum rows to consider the matrix at a time */
+    int active_pks; /* Number of available public keys in the active rows */
+    int windows_size; /* Size of the window (#PKs) required for each operation. Same as Bitmap window size */
+    int nxt_row_number; /* Next row number for allocating new row */
+    public_key_matrix_t pk_matrix; /* Matrix (linked list) of public keys */
 } mumhors_verifier_t;
 
 
@@ -67,7 +67,7 @@ typedef struct mumhors_verifier {
 /// \param seed_len Size of the seed in terms of bytes
 /// \param row Number of matrix rows
 /// \param col Number of matrix columns
-void mumhors_pk_gen(public_key_matrix_t *pk_matrix, unsigned char *seed, int seed_len, int row, int col);
+void mumhors_pk_gen(public_key_matrix_t *pk_matrix, const unsigned char *seed, int seed_len, int row, int col);
 
 /// Initializes a new MUMHORS signer
 /// \param signer Pointer to MUMHORS signer struct
@@ -99,15 +99,15 @@ void mumhors_init_verifier(mumhors_verifier_t *verifier, public_key_matrix_t pk_
                            int r, int c, int rt, int window_size);
 
 /// Deletes the MUMHORS verifier struct
-/// \param signer Pointer to MUMHORS verifier struct
-void mumhors_delete_verifier(mumhors_verifier_t *verifier);
+/// \param verifier Pointer to MUMHORS verifier struct
+void mumhors_delete_verifier(const mumhors_verifier_t *verifier);
 
 /// Sign the message
 /// \param signer Pointer to MUMHORS signer struct
 /// \param message Pointer to the message to be signed
 /// \param message_len Length of the message to be signed
 /// \return SIGN_SUCCESS or SIGN_NO_MORE_ROW_FAILED
-int mumhors_sign_message(mumhors_signer_t *signer, unsigned char *message, int message_len);
+int mumhors_sign_message(mumhors_signer_t *signer, const unsigned char *message, int message_len);
 
 
 /// Verifies the signature on the given message
@@ -116,6 +116,6 @@ int mumhors_sign_message(mumhors_signer_t *signer, unsigned char *message, int m
 /// \param message Pointer to the message
 /// \param message_len Message's length
 /// \return
-int mumhors_verify_signature(mumhors_verifier_t *verifier,  mumhors_signature_t *signature,
-                             unsigned char *message, int message_len);
+int mumhors_verify_signature(mumhors_verifier_t *verifier, const mumhors_signature_t *signature,
+                             const unsigned char *message, int message_len);
 #endif
