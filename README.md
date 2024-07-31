@@ -75,7 +75,7 @@ as `t=1024`, `k=25`, `l=256`, `r=25601`, `rt=11`, `tests=1048576`:
 ```
 $ ./muhors 1024 25 256 25601 11 1048576 ./seed_file
 ```
-![Alt text](https://github.com/kiarashsedghigh/mumhors/figures/run_kg_test.png)
+![Running_kg_test](https://github.com/kiarashsedghigh/mumhors/blob/main/figures/run_kg_test.png)
 
 # ⚠️ Parameter setting 
 Make sure when using array-based version, the parameters when building the project, 
