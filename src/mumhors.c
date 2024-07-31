@@ -150,11 +150,13 @@ int mumhors_sign_message(mumhors_signer_t *signer, const unsigned char *message,
      * through a process known as rejection sampling. */
     signer->signature.ctr = perform_rejection_sampling(message, message_len, signer->k, signer->t, message_indices);
 
+
     for (int i = 0; i < signer->k; i++) {
         int row_number, col_number;
         /* Getting the row and colum numbers for the given index */
         bitmap_get_row_colum_with_index(&signer->bm, message_indices[i], &row_number, &col_number);
 
+        /* Create the respective private key and build the signature */
         /* Create the respective private key and build the signature */
         unsigned char sk[SHA256_OUTPUT_LEN];
         unsigned char *new_seed = malloc(signer->seed_len + 4 + 4);
@@ -321,7 +323,6 @@ static int mumhors_verifier_alloc_row_virtually(mumhors_verifier_t *verifier) {
 
     return PKMATRIX_MORE_ROW_ALLOCATION_SUCCESS;
 }
-
 
 /// This function verifies the received signature with its stored public keys. The intention behind calling this
 /// function virtual, is because the verifier virtually follows the signer's approach for verification without storing

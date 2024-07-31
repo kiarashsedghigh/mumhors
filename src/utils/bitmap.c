@@ -140,30 +140,30 @@ static int bitmap_remove_row_by_index(bitmap_t *bm, int index) {
     /* Removing head */
     if (index == bm->bitmap_matrix.head) {
         bm->bitmap_matrix.head = floor_add_mod(bm->bitmap_matrix.head + 1, bm->bitmap_matrix.size);
-        return floor_add_mod(bm->bitmap_matrix.head - 1, bm->bitmap_matrix.size);
+        return bm->bitmap_matrix.head;
     }
     /* Removing tail */
     if (index == bm->bitmap_matrix.tail) {
         bm->bitmap_matrix.tail = floor_add_mod(bm->bitmap_matrix.tail - 1, bm->bitmap_matrix.size);
-        return floor_add_mod(bm->bitmap_matrix.tail - 1, bm->bitmap_matrix.size);
+        return bm->bitmap_matrix.tail;
     }
 
     /* If head < tail */
     if (bm->bitmap_matrix.head <= bm->bitmap_matrix.tail) {
         if (index <= (bm->bitmap_matrix.tail - bm->bitmap_matrix.head) / 2) {
             SHIFT_FROM_HEAD_TO_CURRENT_INDEX_AND_UPDATE_HEAD()
-            return index;
+            return floor_add_mod(index + 1, bm->bitmap_matrix.size);
         }
         SHIFT_FROM_TAIL_TO_CURRENT_INDEX_AND_UPDATE_HEAD()
-        return index - 1;
+        return floor_add_mod(index, bm->bitmap_matrix.size);
     }
     /* If tail < head */
     if (index > bm->bitmap_matrix.head && index < bm->bitmap_matrix.size) {
         SHIFT_FROM_HEAD_TO_CURRENT_INDEX_AND_UPDATE_HEAD()
-        return index;
+        return floor_add_mod(index + 1, bm->bitmap_matrix.size);
     }
     SHIFT_FROM_TAIL_TO_CURRENT_INDEX_AND_UPDATE_HEAD()
-    return index - 1;
+    return floor_add_mod(index, bm->bitmap_matrix.size);
 }
 #endif
 
@@ -206,25 +206,33 @@ static int bitmap_row_cleanup(bitmap_t *bm) {
             row = row->next;
     }
 #elif BITMAP_ARRAY
+    // todo Delegate the row index boundary change to remove function?
+    /* In array version, there is no way to detect a deleted row. Hence, we have breaks */
     if (bm->bitmap_matrix.head <= bm->bitmap_matrix.tail) {
         for (int row_index = bm->bitmap_matrix.head; row_index <= bm->bitmap_matrix.tail; row_index++) {
             if (bm->bitmap_matrix.rows[row_index].set_bits == 0) {
                 row_index = bitmap_remove_row_by_index(bm, row_index);
                 cleaned_rows++;
+                if (row_index == bm->bitmap_matrix.tail) break;
+                row_index--;
             }
         }
     } else {
         for (int row_index = bm->bitmap_matrix.head; row_index < bm->bitmap_matrix.size; row_index++) {
             if (bm->bitmap_matrix.rows[row_index].set_bits == 0) {
                 row_index = bitmap_remove_row_by_index(bm, row_index);
-                if (bm->bitmap_matrix.head == 0) break; /* If head goes from end of array to the beginning */
                 cleaned_rows++;
+                if (row_index == 0) break; /* If head goes from end of array to the beginning */
+                row_index--;
             }
         }
         for (int row_index = 0; row_index <= bm->bitmap_matrix.tail; row_index++) {
             if (bm->bitmap_matrix.rows[row_index].set_bits == 0) {
                 row_index = bitmap_remove_row_by_index(bm, row_index);
                 cleaned_rows++;
+
+                if (row_index == bm->bitmap_matrix.tail) break;
+                row_index--;
             }
         }
     }
@@ -306,7 +314,7 @@ static int bitmap_allocate_more_row(bitmap_t *bm) {
             if (bm->bitmap_matrix.head <= bm->bitmap_matrix.tail) {
                 BITMAP_AND_FIND_ROW_WITH_MINIMUM_BITS(bm->bitmap_matrix.head, bm->bitmap_matrix.tail)
             } else {
-                BITMAP_AND_FIND_ROW_WITH_MINIMUM_BITS(bm->bitmap_matrix.head, bm->bitmap_matrix.size)
+                BITMAP_AND_FIND_ROW_WITH_MINIMUM_BITS(bm->bitmap_matrix.head, bm->bitmap_matrix.size - 1)
                 BITMAP_AND_FIND_ROW_WITH_MINIMUM_BITS(0, bm->bitmap_matrix.tail)
             }
             bitmap_remove_row_by_index(bm, target_index);

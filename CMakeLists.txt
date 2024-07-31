@@ -4,9 +4,13 @@ project(mumhors)
 set(CMAKE_CXX_STANDARD 23)
 
 include_directories(src src/utils src/crypto)
-
 add_compile_options(-O3 -w)
-#
+
+set(CMAKE_CXX_FLAGS_RELEASE "-Os -ffunction-sections -fdata-sections -flto -DNDEBUG")
+set(CMAKE_C_FLAGS_RELEASE "-Os -ffunction-sections -fdata-sections -flto -DNDEBUG")
+set(CMAKE_EXE_LINKER_FLAGS_RELEASE "-s -Wl,--gc-sections")
+
+
 
 link_libraries(tomcrypt m)
 
