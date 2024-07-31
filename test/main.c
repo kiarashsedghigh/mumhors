@@ -86,10 +86,12 @@ int main(int argc, char **argv) {
         /* Creating randomized messages */
         int message_index;
         for (message_index = 0; message_index < tests; message_index++) {
+            printf("\r[%d/%d]", message_index, tests);  // Print the number and move cursor to the start of the line
+            fflush(stdout);     // Ensure the output is immediately printed
 
             gettimeofday(&start_time, NULL);
             if (mumhors_sign_message(&signer, message, SHA256_OUTPUT_LEN) == SIGN_NO_MORE_ROW_FAILED) {
-                debug("[Signer] No more rows are left to sign", DEBUG_INF);
+                debug("\n[Signer] No more rows are left to sign", DEBUG_INF);
                 break;
             }
             gettimeofday(&end_time, NULL);
@@ -98,7 +100,7 @@ int main(int argc, char **argv) {
             gettimeofday(&start_time, NULL);
             if (mumhors_verify_signature(&verifier, &signer.signature, message, SHA256_OUTPUT_LEN) ==
                 VERIFY_SIGNATURE_INVALID) {
-                printf("[Verifier] Signature verification invalid %d\n", message_index);
+                printf("\n[Verifier] Signature verification invalid %d\n", message_index);
                 break;
             }
             gettimeofday(&end_time, NULL);
