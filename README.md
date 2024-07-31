@@ -46,10 +46,12 @@ cd buid
 with bitmap as linked list:
 ```
 cmake -S .. -B . -DCMAKE_C_FLAGS="-DBITMAP_LIST"
+make
 ```
 with bitmap as array:
 ```
 cmake -S .. -B . -DCMAKE_C_FLAGS="-DBITMAP_ARRAY -DROW_THRESHOLD=RT -DBIT_VECTOR=VECTOR_SIZE"
+make
 ```
 where `VECTOR_SIZE` is in bits.
 
@@ -66,14 +68,15 @@ seed file manually if no exists.
 # Example
 ## Build
 ```
-build/$ cmake -S .. -B . -DCMAKE_C_FLAGS="-DBITMAP_ARRAY -DROW_THRESHOLD=11 -DBIT_VECTOR=1024"
+cmake -S .. -B . -DCMAKE_C_FLAGS="-DBITMAP_ARRAY -DROW_THRESHOLD=11 -DBIT_VECTOR=1024"
+make
 ```
 
 ## Run 
 To sign 2<sup>20</sup> messages with 128-bit security, we can set parameters 
 as `t=1024`, `k=25`, `l=256`, `r=25601`, `rt=11`, `tests=1048576`:
 ```
-$ ./muhors 1024 25 256 25601 11 1048576 ./seed_file
+$ ./mumhors 1024 25 256 25601 11 1048576 ./seed_file
 ```
 ![Running_kg_test](https://github.com/kiarashsedghigh/mumhors/blob/main/figures/run_kg_test.png)
 
