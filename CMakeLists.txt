@@ -8,11 +8,13 @@ include_directories(src src/utils src/crypto)
 #if(NOT CMAKE_CXX_FLAGS MATCHES "-BITMAP_ARRAY]")
 #    message(STATUS "No optimization flags (-O2 or -O3) have been passed.")
 #endif()
+
+#add_compile_options(-O3 -w -DJOURNAL -DBITMAP_ARRAY -DROW_THRESHOLD=11 -DBIT_VECTOR=1024)
 add_compile_options(-O3 -w)
 
-set(CMAKE_CXX_FLAGS_RELEASE "-Os -ffunction-sections -fdata-sections -flto -DNDEBUG")
-set(CMAKE_C_FLAGS_RELEASE "-Os -ffunction-sections -fdata-sections -flto -DNDEBUG")
-set(CMAKE_EXE_LINKER_FLAGS_RELEASE "-s -Wl,--gc-sections")
+#set(CMAKE_CXX_FLAGS_RELEASE "-Os -ffunction-sections -fdata-sections -flto -DNDEBUG")
+#set(CMAKE_C_FLAGS_RELEASE "-Os -ffunction-sections -fdata-sections -flto -DNDEBUG")
+#set(CMAKE_EXE_LINKER_FLAGS_RELEASE "-s -Wl,--gc-sections")
 
 link_libraries(tomcrypt m ssl crypto)
 
