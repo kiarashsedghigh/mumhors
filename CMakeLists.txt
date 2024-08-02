@@ -9,8 +9,8 @@ include_directories(src src/utils src/crypto)
 #    message(STATUS "No optimization flags (-O2 or -O3) have been passed.")
 #endif()
 
-#add_compile_options(-O3 -w -DJOURNAL -DBITMAP_ARRAY -DROW_THRESHOLD=11 -DBIT_VECTOR=1024)
-add_compile_options(-O3 -w)
+add_compile_options(-O3 -w -DJOURNAL -DBITMAP_ARRAY -DROW_THRESHOLD=11 -DBIT_VECTOR=1024)
+#add_compile_options(-O3 -w -DJOURNAL -DBITMAP_LIST)
 
 #set(CMAKE_CXX_FLAGS_RELEASE "-Os -ffunction-sections -fdata-sections -flto -DNDEBUG")
 #set(CMAKE_C_FLAGS_RELEASE "-Os -ffunction-sections -fdata-sections -flto -DNDEBUG")
