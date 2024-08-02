@@ -1,4 +1,5 @@
 #include <tomcrypt.h>
+#include <openssl/sha.h>
 
 #define SHA256_OUTPUT_LEN 32
 
@@ -10,7 +11,7 @@ int ltc_hash_sha2_256(unsigned char *hash_output, const unsigned char *input, lo
     return SHA256_OUTPUT_LEN;
 }
 
-
-
-
-
+int openssl_hash_sha2_256(unsigned char * hash_output, const unsigned char * input , long length){
+    SHA256(input, length, hash_output);
+    return SHA256_OUTPUT_LEN;
+}

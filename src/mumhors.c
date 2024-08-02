@@ -28,8 +28,8 @@ void mumhors_pk_gen(public_key_matrix_t *pk_matrix, const unsigned char *seed, i
             memcpy(new_seed, seed, seed_len);
             memcpy(new_seed + seed_len, &i, 4);
             memcpy(new_seed + seed_len + 4, &j, 4);
-            ltc_hash_sha2_256(sk, new_seed, seed_len + 4 + 4);
-            ltc_hash_sha2_256(pk, sk, SHA256_OUTPUT_LEN);
+            blake2b_256(sk, new_seed, seed_len + 4 + 4);
+            blake2b_256(pk, sk, SHA256_OUTPUT_LEN);
             pk_node->pks[j] = pk;
             free(new_seed);
         }
@@ -79,12 +79,12 @@ static int perform_rejection_sampling(const unsigned char *message, int message_
 
     /* Hash one time */
     unsigned char hash_ctr_buffer[SHA256_OUTPUT_LEN + sizeof(ctr)];
-    ltc_hash_sha2_256(hash_ctr_buffer, message, message_len);
+    blake2b_256(hash_ctr_buffer, message, message_len);
 
     while (1) {
         unsigned char hash_result[SHA256_OUTPUT_LEN];
         mempcpy(hash_ctr_buffer + SHA256_OUTPUT_LEN, &ctr, sizeof(ctr));
-        ltc_hash_sha2_256(hash_result, hash_ctr_buffer, SHA256_OUTPUT_LEN + sizeof(ctr));
+        blake2b_256(hash_result, hash_ctr_buffer, SHA256_OUTPUT_LEN + sizeof(ctr));
 
         for (int i = 0; i < k; i++) {
             new_indices[i] = read_bits_as_4bytes(hash_result, i + 1, (int) log2(t));
@@ -116,11 +116,11 @@ static int check_rejection_sampling(const unsigned char *message, int message_le
 
     /* Hash one time */
     unsigned char hash_ctr_buffer[SHA256_OUTPUT_LEN + sizeof(ctr)];
-    ltc_hash_sha2_256(hash_ctr_buffer, message, message_len);
+    blake2b_256(hash_ctr_buffer, message, message_len);
 
     unsigned char target_hash[SHA256_OUTPUT_LEN];
     mempcpy(hash_ctr_buffer + SHA256_OUTPUT_LEN, &ctr, sizeof(ctr));
-    ltc_hash_sha2_256(target_hash, hash_ctr_buffer, SHA256_OUTPUT_LEN + sizeof(ctr));
+    blake2b_256(target_hash, hash_ctr_buffer, SHA256_OUTPUT_LEN + sizeof(ctr));
 
     for (int i = 0; i < k; i++) {
         new_indices[i] = read_bits_as_4bytes(target_hash, i + 1, (int) log2(t));
@@ -144,7 +144,7 @@ int mumhors_sign_message(mumhors_signer_t *signer, const unsigned char *message,
 
     /* Hashing the message */
     // unsigned char message_hash[SHA256_OUTPUT_LEN];
-    // ltc_hash_sha2_256(message_hash, message, message_len);
+    // blake2b_256(message_hash, message, message_len);
 
     /* Extract the indices from the hash of the message while ensuring they are different
      * through a process known as rejection sampling. */
@@ -163,7 +163,7 @@ int mumhors_sign_message(mumhors_signer_t *signer, const unsigned char *message,
         memcpy(new_seed, signer->seed, signer->seed_len);
         memcpy(new_seed + signer->seed_len, &row_number, 4);
         memcpy(new_seed + signer->seed_len + 4, &col_number, 4);
-        ltc_hash_sha2_256(sk, new_seed, signer->seed_len + 4 + 4);
+        blake2b_256(sk, new_seed, signer->seed_len + 4 + 4);
         memcpy(signer->signature.signature + i * SHA256_OUTPUT_LEN, sk, SHA256_OUTPUT_LEN);
         free(new_seed);
     }
@@ -374,7 +374,7 @@ static int verify_signature_using_virtual_matrix(mumhors_verifier_t *verifier, i
         /* Extract the corresponding private key and hash it */
         memcpy(sk, signature + i * verifier->l / 8, verifier->l / 8);
         unsigned char sk_hash[SHA256_OUTPUT_LEN];
-        ltc_hash_sha2_256(sk_hash, sk, verifier->l / 8);
+        blake2b_256(sk_hash, sk, verifier->l / 8);
 
         /* Compare the hash with the current public key*/
         if (strncmp(target_pk, sk_hash, SHA256_OUTPUT_LEN) != 0) {

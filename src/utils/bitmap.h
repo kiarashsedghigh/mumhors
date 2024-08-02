@@ -9,10 +9,20 @@
 #ifdef JOURNAL
 /// A group of journaling information which show the performance of the bitmap
 typedef struct bitmap_journaling {
-    int cnt_alloc_more_rows; /* Number of calls to the row allocation procedure */
-    int cnt_cleanup_call; /* Number of calls to the cleanup procedure */
-    int cnt_count_unset; /* Number of calls to the unset procedure */
-    int cnt_discarded_bits; /* Counting the number of discard bits */
+    int cnt_call_alloc_more_rows_call;    /* Number of calls to the row allocation procedure */
+    int cnt_call_cleanup_call;       /* Number of calls to the cleanup procedure */
+    int cnt_call_cleanup_rows_removed;      /* Total number of rows removed by cleanup */
+    int cnt_call_direct_remove_row;     /* Number of calls to direct row removal */
+    int cnt_cnt_unset_call;        /* Number of calls to the unset procedure */
+    int cnt_cnt_get_row_col_call;        /* Number of calls to the get row and column indices of the given bit index */
+    int cnt_discarded_bits;     /* Counting the number of discard bits */
+    int cnt_discarded_rows;        /* Total number of rows discarded */
+
+    double total_time_cleanup;
+    double total_time_remove_row;
+    double total_time_get_row_col;
+    double total_time_unset_bits;
+
 } bitmap_journaling_t;
 #endif
 

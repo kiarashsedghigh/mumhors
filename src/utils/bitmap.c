@@ -5,8 +5,12 @@
 #include "bitmap.h"
 #include "sort.h"
 #include "math.h"
+#include <sys/time.h>
 
 #define BYTES2BITS(x) (x*8)
+
+struct timeval start_time, end_time;
+
 
 /// Freeing a row of the Bitmap
 /// \param row Pointer to the row
@@ -55,10 +59,20 @@ void bitmap_init(bitmap_t *bm, int rows, int cols, int row_threshold, int window
 
 #ifdef JOURNAL
     /* If journaling is enabled, initialize the variables to 0 */
-    bm->bitmap_report.cnt_cleanup_call = 0;
-    bm->bitmap_report.cnt_alloc_more_rows = 0;
-    bm->bitmap_report.cnt_count_unset = 0;
+    bm->bitmap_report.cnt_call_direct_remove_row = 0;
+    bm->bitmap_report.cnt_call_cleanup_call = 0;
+    bm->bitmap_report.cnt_call_alloc_more_rows_call = 0;
+    bm->bitmap_report.cnt_cnt_unset_call = 0;
     bm->bitmap_report.cnt_discarded_bits = 0;
+    bm->bitmap_report.cnt_call_cleanup_rows_removed = 0;
+    bm->bitmap_report.cnt_discarded_rows = 0;
+    bm->bitmap_report.cnt_cnt_get_row_col_call = 0;
+
+    bm->bitmap_report.total_time_cleanup = 0;
+    bm->bitmap_report.total_time_remove_row = 0;
+    bm->bitmap_report.total_time_get_row_col = 0;
+    bm->bitmap_report.total_time_unset_bits = 0;
+
 #endif
 
 
@@ -123,6 +137,12 @@ void bitmap_delete(bitmap_t *bm) {
         bm->bitmap_matrix.rows[i-1] = bm->bitmap_matrix.rows[i]; \
     bm->bitmap_matrix.tail = floor_add_mod(bm->bitmap_matrix.tail - 1 , bm->bitmap_matrix.size) ;
 
+#define GET_TIME_BITMAP_ARRAY_REMOVE_ROW_BY_INDEX() \
+gettimeofday(&end_time, NULL);\
+bm->bitmap_report.total_time_remove_row += (end_time.tv_sec - start_time.tv_sec) + (\
+    end_time.tv_usec - start_time.tv_usec) / 1.0e6;\
+
+
 /// Removing a row from the array of rows and return the next index to be used
 /// \param bm Pointer to the bitmap structure
 /// @param index Index of the target row
@@ -130,6 +150,7 @@ void bitmap_delete(bitmap_t *bm) {
 static int bitmap_remove_row_by_index(bitmap_t *bm, int index) {
 #ifdef JOURNAL
     bm->bitmap_report.cnt_discarded_bits += bm->bitmap_matrix.rows[index].set_bits;
+    gettimeofday(&start_time, NULL);
 #endif
 
     /* Remove the row */
@@ -140,11 +161,17 @@ static int bitmap_remove_row_by_index(bitmap_t *bm, int index) {
     /* Removing head */
     if (index == bm->bitmap_matrix.head) {
         bm->bitmap_matrix.head = floor_add_mod(bm->bitmap_matrix.head + 1, bm->bitmap_matrix.size);
+#ifdef JOURNAL
+        GET_TIME_BITMAP_ARRAY_REMOVE_ROW_BY_INDEX()
+#endif
         return bm->bitmap_matrix.head;
     }
     /* Removing tail */
     if (index == bm->bitmap_matrix.tail) {
         bm->bitmap_matrix.tail = floor_add_mod(bm->bitmap_matrix.tail - 1, bm->bitmap_matrix.size);
+#ifdef JOURNAL
+        GET_TIME_BITMAP_ARRAY_REMOVE_ROW_BY_INDEX()
+#endif
         return bm->bitmap_matrix.tail;
     }
 
@@ -152,17 +179,32 @@ static int bitmap_remove_row_by_index(bitmap_t *bm, int index) {
     if (bm->bitmap_matrix.head <= bm->bitmap_matrix.tail) {
         if (index <= (bm->bitmap_matrix.tail - bm->bitmap_matrix.head) / 2) {
             SHIFT_FROM_HEAD_TO_CURRENT_INDEX_AND_UPDATE_HEAD()
+
+#ifdef JOURNAL
+GET_TIME_BITMAP_ARRAY_REMOVE_ROW_BY_INDEX()
+#endif
             return floor_add_mod(index + 1, bm->bitmap_matrix.size);
         }
         SHIFT_FROM_TAIL_TO_CURRENT_INDEX_AND_UPDATE_HEAD()
+#ifdef JOURNAL
+GET_TIME_BITMAP_ARRAY_REMOVE_ROW_BY_INDEX()
+#endif
         return floor_add_mod(index, bm->bitmap_matrix.size);
     }
     /* If tail < head */
     if (index > bm->bitmap_matrix.head && index < bm->bitmap_matrix.size) {
         SHIFT_FROM_HEAD_TO_CURRENT_INDEX_AND_UPDATE_HEAD()
+
+#ifdef JOURNAL
+GET_TIME_BITMAP_ARRAY_REMOVE_ROW_BY_INDEX()
+#endif
         return floor_add_mod(index + 1, bm->bitmap_matrix.size);
     }
     SHIFT_FROM_TAIL_TO_CURRENT_INDEX_AND_UPDATE_HEAD()
+
+#ifdef JOURNAL
+    GET_TIME_BITMAP_ARRAY_REMOVE_ROW_BY_INDEX()
+#endif
     return floor_add_mod(index, bm->bitmap_matrix.size);
 }
 #endif
@@ -173,7 +215,8 @@ static int bitmap_remove_row_by_index(bitmap_t *bm, int index) {
 /// \return Returns number of cleaned(removed) rows
 static int bitmap_row_cleanup(bitmap_t *bm) {
 #ifdef JOURNAL
-    bm->bitmap_report.cnt_cleanup_call++;
+    bm->bitmap_report.cnt_call_cleanup_call++;
+    gettimeofday(&start_time, NULL);
 #endif
     /* Count the number of cleaned rows */
     int cleaned_rows = 0;
@@ -237,6 +280,11 @@ static int bitmap_row_cleanup(bitmap_t *bm) {
         }
     }
 #endif
+#ifdef JOURNAL
+    bm->bitmap_report.cnt_call_cleanup_rows_removed += cleaned_rows;
+    gettimeofday(&end_time, NULL);
+    bm->bitmap_report.total_time_cleanup += (end_time.tv_sec - start_time.tv_sec) + (end_time.tv_usec - start_time.tv_usec) / 1.0e6;
+#endif
     return cleaned_rows;
 }
 
@@ -246,6 +294,11 @@ static int bitmap_row_cleanup(bitmap_t *bm) {
 /// \param row Pointer to the row
 #ifdef BITMAP_LIST
 static void bitmap_list_remove_row(bitmap_t *bm, row_t *row) {
+#ifdef JOURNAL
+    bm->bitmap_report.cnt_discarded_bits += row->set_bits;
+    gettimeofday(&start_time, NULL);
+#endif
+
     if (row == bm->bitmap_matrix.head)
         bm->bitmap_matrix.head = bm->bitmap_matrix.head->next;
     else {
@@ -260,10 +313,13 @@ static void bitmap_list_remove_row(bitmap_t *bm, row_t *row) {
     /* Updating the hyperparameters */
     bm->active_rows--;
     bm->set_bits -= row->set_bits;
-#ifdef JOURNAL
-    bm->bitmap_report.cnt_discarded_bits += row->set_bits;
-#endif
     bitmap_free_row(row);
+
+#ifdef JOURNAL
+    gettimeofday(&end_time, NULL);
+    bm->bitmap_report.total_time_remove_row += (end_time.tv_sec - start_time.tv_sec) + (
+        end_time.tv_usec - start_time.tv_usec) / 1.0e6;
+#endif
 }
 #endif
 
@@ -281,7 +337,7 @@ static void bitmap_list_remove_row(bitmap_t *bm, row_t *row) {
 /// \return BITMAP_MORE_ROW_ALLOCATION_SUCCESS or BITMAP_NO_MORE_ROWS_TO_ALLOCATE
 static int bitmap_allocate_more_row(bitmap_t *bm) {
 #ifdef JOURNAL
-    bm->bitmap_report.cnt_alloc_more_rows++;
+    bm->bitmap_report.cnt_call_alloc_more_rows_call++;
 #endif
 
     /* Check if we have any row left to allocate */
@@ -295,6 +351,11 @@ static int bitmap_allocate_more_row(bitmap_t *bm) {
          * the least number of set bits if no row was deleted */
         if (!bitmap_row_cleanup(bm)) {
             /* Clean up did not clean anything. So, finding the row with the fewest number of set bits */
+
+#ifdef JOURNAL
+            bm->bitmap_report.cnt_call_direct_remove_row++;
+            bm->bitmap_report.cnt_discarded_rows++;
+#endif
 
 #ifdef BITMAP_LIST
             row_t *row = bm->bitmap_matrix.head;
@@ -389,6 +450,11 @@ int bitmap_extend_matrix(bitmap_t *bm) {
 #endif
 
 void bitmap_get_row_colum_with_index(bitmap_t *bm, int target_index, int *row_num, int *col_num) {
+#ifdef JOURNAL
+    bm->bitmap_report.cnt_cnt_get_row_col_call++;
+    gettimeofday(&start_time, NULL);
+#endif
+
     row_t *row;
 
 #ifdef BITMAP_LIST
@@ -432,10 +498,20 @@ extract_manipulate_indices:
             target_index -= cnt_ones;
         }
     }
+#ifdef JOURNAL
+    gettimeofday(&end_time, NULL);
+    bm->bitmap_report.total_time_get_row_col += (end_time.tv_sec - start_time.tv_sec) + (end_time.tv_usec - start_time.tv_usec) / 1.0e6;
+#endif
 }
 
 
 void bitmap_unset_indices_in_window(bitmap_t *bm, int *indices, int num_index) {
+
+#ifdef JOURNAL
+    bm->bitmap_report.cnt_cnt_unset_call++;
+    gettimeofday(&start_time, NULL);
+#endif
+
     /* Sort the indices.
      * Description: The rationale behind first soring and then unsetting is that, when the indices
      * are given in not-ordered fashion, then if we try to unset the first one, we loose the information
@@ -447,6 +523,7 @@ void bitmap_unset_indices_in_window(bitmap_t *bm, int *indices, int num_index) {
      * fetching the values and then remove the indices.
      * */
     merge_sort(indices, 0, num_index - 1);
+
 
     int index_diff = 0;
     for (int i = 0; i < num_index; i++) {
@@ -495,18 +572,44 @@ void bitmap_unset_indices_in_window(bitmap_t *bm, int *indices, int num_index) {
             }
         }
     }
+
 #ifdef JOURNAL
-    bm->bitmap_report.cnt_count_unset++;
+    gettimeofday(&end_time, NULL);
+    bm->bitmap_report.total_time_unset_bits += (end_time.tv_sec - start_time.tv_sec) + (end_time.tv_usec - start_time.tv_usec) / 1.0e6;
 #endif
 }
 
 
 #ifdef JOURNAL
 void bitmap_report(const bitmap_t *bm) {
-    printf("\n----------Bitmap Report--------\n");
-    printf("Row cleanup calls: %d\n", bm->bitmap_report.cnt_cleanup_call);
-    printf("Row alloc calls: %d\n", bm->bitmap_report.cnt_alloc_more_rows);
-    printf("Index unsetting calls: %d\n", bm->bitmap_report.cnt_count_unset);
-    printf("Discarded bits: %d/%d\n", bm->bitmap_report.cnt_discarded_bits, bm->r * BYTES2BITS(bm->cB));
+    printf("\n================ Bitmap Report ================\n");
+    printf("#ROW_ALLOC(.): %d\n", bm->bitmap_report.cnt_call_alloc_more_rows_call);
+    printf("\t#ROW_CLEANUP(.): %d\n", bm->bitmap_report.cnt_call_cleanup_call);
+    printf("\t\t--- Empty rows removed: %d\n", bm->bitmap_report.cnt_call_cleanup_rows_removed);
+    printf("\t#ROW_DIRECT_REMOVE(.): %d\n", bm->bitmap_report.cnt_call_direct_remove_row);
+    printf("#INDEX_GET_ROW_COL(.)/Index: %d\n", bm->bitmap_report.cnt_cnt_get_row_col_call);
+    printf("#INDEX_UNSET(.)/Batch: %d\n", bm->bitmap_report.cnt_cnt_unset_call);
+    printf("--- Discarded rows: %d/%d\n", bm->bitmap_report.cnt_discarded_rows, bm->r);
+    printf("--- Discarded bits: %d/%d\n", bm->bitmap_report.cnt_discarded_bits, bm->r * BYTES2BITS(bm->cB));
+
+    /* Timing */
+    printf("\n------- Timings -------\n");
+    printf("--- TT Cleanup: %0.12f micros\n", bm->bitmap_report.total_time_cleanup * 1000000);
+    printf("--- TT Direct Remove Row: %0.12f micros\n", bm->bitmap_report.total_time_remove_row * 1000000);
+    printf("--- TT Get Row Col: %0.12f micros\n", bm->bitmap_report.total_time_get_row_col * 1000000);
+    printf("--- TT Unset Bits: %0.12f micros\n", bm->bitmap_report.total_time_unset_bits * 1000000);
+
+    printf("\n");
+    printf("--- AVGT Cleanup: %0.12f micros\n", bm->bitmap_report.cnt_call_cleanup_rows_removed!=0 ?
+           bm->bitmap_report.total_time_cleanup / bm->bitmap_report.cnt_call_cleanup_rows_removed * 1000000 : 0);
+
+    printf("--- AVGT Direct Remove Row: %0.12f micros\n", ( bm->bitmap_report.cnt_call_cleanup_rows_removed + bm->bitmap_report.cnt_call_direct_remove_row) !=0 ?
+           bm->bitmap_report.total_time_remove_row / (bm->bitmap_report.cnt_call_direct_remove_row + bm->bitmap_report.cnt_call_cleanup_rows_removed) * 1000000 : 0);
+
+    printf("--- AVGT Get Row Col: %0.12f micros\n", bm->bitmap_report.cnt_cnt_get_row_col_call != 0 ?
+           bm->bitmap_report.total_time_get_row_col / bm->bitmap_report.cnt_cnt_get_row_col_call * 1000000 : 0);
+    printf("--- AVGT Unset Bits: %0.12f micros\n", bm->bitmap_report.cnt_cnt_unset_call != 0 ?
+           bm->bitmap_report.total_time_unset_bits / bm->bitmap_report.cnt_cnt_unset_call * 1000000 : 0);
+
 }
 #endif

@@ -30,6 +30,7 @@ The circular queue variant is optimized for scenarios where a fixed number of ke
 ## Requirements
 Before you begin, ensure you have met the following requirements:
 - **Libtomcrypt**: v1.18.2 or higher
+- **Openssl**
 - **CMake**: 3.22 or higher ![CMake](https://img.shields.io/badge/cmake-3.22%2B-blue.svg)
 
 
@@ -55,6 +56,8 @@ make
 ```
 where `VECTOR_SIZE` is in bits.
 
+Add `-DJOURNAL` to get performance report of the bitmap.
+
 # Running
 To run the program:
 ```
@@ -68,7 +71,7 @@ seed file manually if no exists.
 # Example
 ## Build
 ```
-cmake -S .. -B . -DCMAKE_C_FLAGS="-DBITMAP_ARRAY -DROW_THRESHOLD=11 -DBIT_VECTOR=1024"
+cmake -S .. -B . -DCMAKE_C_FLAGS="-DJOURNAL -DBITMAP_ARRAY -DROW_THRESHOLD=11 -DBIT_VECTOR=1024"
 make
 ```
 

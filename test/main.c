@@ -77,7 +77,7 @@ int main(int argc, char **argv) {
     unsigned char buffer2[SHA256_OUTPUT_LEN];
     unsigned char *message = buffer1;
     unsigned char *hash = buffer2;
-    ltc_hash_sha2_256(message, seed, seed_len);
+    blake2b_256(message, seed, seed_len);
 
     int *message_indices = malloc(sizeof(int) * k);
 
@@ -105,13 +105,14 @@ int main(int argc, char **argv) {
         verify_time += (end_time.tv_sec - start_time.tv_sec) + (end_time.tv_usec - start_time.tv_usec) / 1.0e6;
 
         /* Now, use the hash as the next message by swapping the pointers */
-        ltc_hash_sha2_256(hash, message, SHA256_OUTPUT_LEN);
+        blake2b_256(hash, message, SHA256_OUTPUT_LEN);
         unsigned char *swap = hash;
         hash = message;
         message = swap;
     }
 
-    printf("\n================ Signing Report ================\n");
+    printf("\r");
+    printf("\n================ MUM-HORS Report ================\n");
     printf("Signed message: %d/%d\n", message_index, tests);
     printf("Sign time: %0.12f\n", sign_time);
     printf("Verify time: %0.12f\n", verify_time);
