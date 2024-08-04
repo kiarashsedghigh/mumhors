@@ -9,7 +9,6 @@
 #include <assert.h>
 #include <stdio.h>
 
-
 void mumhors_pk_gen(public_key_matrix_t *pk_matrix, const unsigned char *seed, int seed_len, int row, int col) {
     /* Initialize the linked list variables */
     pk_matrix->head = NULL;
@@ -71,72 +70,106 @@ void mumhors_delete_signer(mumhors_signer_t *signer) {
     bitmap_delete(&signer->bm);
 }
 
-
-static int perform_rejection_sampling(const unsigned char *message, int message_len, int k, int t,
-    int *message_indices) {
-    unsigned int ctr = 0;
+static int check_if_indices_are_distinc(unsigned char* value, int k, int chunk, int* message_indices) {
     int *new_indices = malloc(sizeof(int) * k);
 
+    for (int i = 0; i < k; i++) {
+        new_indices[i] = read_bits_as_4bytes(value, i + 1, chunk);
+        message_indices[i] = new_indices[i];
+    }
+
+    merge_sort(new_indices, 0, k - 1);
+    for (int i = 1; i < k; i++){
+        if (new_indices[i] == new_indices[i - 1]) {
+            free(new_indices);
+            return 1;
+        }
+    }
+    free(new_indices);
+    return 0;
+}
+
+int total = 0;
+static int perform_rejection_sampling(const unsigned char *message, int message_len, int k, int t,
+    int *message_indices) {
+
+    unsigned char pads[3][32] = {
+        {0x6b, 0x8f, 0x34, 0x1a, 0xdf, 0x21, 0x5e, 0xa3, 0x79, 0x2d, 0xe7, 0xc1, 0x5b, 0x6a, 0x1b, 0x3f, 0x5c, 0xe0, 0x1d, 0x8b, 0x3d, 0xf2, 0x7e, 0x4a, 0xe8, 0xb1, 0x5d, 0x9c, 0x6f, 0x43, 0x84, 0x2e},
+        {0xab, 0xf9, 0x27, 0xcd, 0x12, 0xe3, 0x89, 0x45, 0xd8, 0x66, 0x97, 0xa4, 0xbc, 0x8d, 0x5e, 0xf1, 0x4c, 0x32, 0x7a, 0x90, 0x8f, 0xb3, 0xd9, 0xe6, 0x1e, 0xac, 0x74, 0x91, 0x5b, 0xdf, 0x2c, 0xe5},
+        {0x59, 0x9f, 0x4b, 0x8a, 0x36, 0xf4, 0xa7, 0x28, 0x91, 0x6e, 0x2b, 0x5d, 0xc9, 0x72, 0xf2, 0x13, 0x46, 0x8e, 0x93, 0xb4, 0xd7, 0x6a, 0xe1, 0x5f, 0x0b, 0xc4, 0x89, 0x71, 0x3d, 0x2a, 0x94, 0xfc},
+    };
+
     /* Hash one time */
-    unsigned char hash_ctr_buffer[SHA256_OUTPUT_LEN + sizeof(ctr)];
+    unsigned char hash_ctr_buffer[SHA256_OUTPUT_LEN + 4];
     blake2b_256(hash_ctr_buffer, message, message_len);
 
+    if (check_if_indices_are_distinc(hash_ctr_buffer, k, (int)log2(t), message_indices))
+        return 0;
+
+
+
+    /* XOR with pads 1-3 and try again */
+    for(int j=0; j<3; j++) {
+        for(int i=0;i<32;i++)
+            hash_ctr_buffer[i] ^= pads[j][i];
+        if (check_if_indices_are_distinc(hash_ctr_buffer, k, (int)log2(t), message_indices))
+            return 0;
+
+
+    }
+
+    /* Use Ctr to resolve */
+    unsigned int ctr = 0;
     while (1) {
         unsigned char hash_result[SHA256_OUTPUT_LEN];
         mempcpy(hash_ctr_buffer + SHA256_OUTPUT_LEN, &ctr, sizeof(ctr));
         blake2b_256(hash_result, hash_ctr_buffer, SHA256_OUTPUT_LEN + sizeof(ctr));
 
-        for (int i = 0; i < k; i++) {
-            new_indices[i] = read_bits_as_4bytes(hash_result, i + 1, (int) log2(t));
-            message_indices[i] = new_indices[i];
-        }
-        /* Check if the new indices are distinct parts */
-        int ctr_found = 1;
-        merge_sort(new_indices, 0, k - 1);
-        for (int i = 1; i < k; i++)
-            if (new_indices[i] == new_indices[i - 1]) {
-                ctr_found = 0;
-                break;
-            }
-        if (ctr_found) break;
-
+        if (check_if_indices_are_distinc(hash_result, k, (int)log2(t), message_indices))
+            return ctr;
         ctr++;
+
         /* Overflow the unsigned counter variable*/
         if (ctr == 0)
             assert(ctr != 0);
     }
-    free(new_indices);
+
     return ctr;
 }
 
 static int check_rejection_sampling(const unsigned char *message, int message_len, int k, int t, int *indices,
                                     unsigned int ctr) {
-
-    int *new_indices = malloc(sizeof(int) * k);
+    unsigned char pads[3][32] = {
+        {0x6b, 0x8f, 0x34, 0x1a, 0xdf, 0x21, 0x5e, 0xa3, 0x79, 0x2d, 0xe7, 0xc1, 0x5b, 0x6a, 0x1b, 0x3f, 0x5c, 0xe0, 0x1d, 0x8b, 0x3d, 0xf2, 0x7e, 0x4a, 0xe8, 0xb1, 0x5d, 0x9c, 0x6f, 0x43, 0x84, 0x2e},
+        {0xab, 0xf9, 0x27, 0xcd, 0x12, 0xe3, 0x89, 0x45, 0xd8, 0x66, 0x97, 0xa4, 0xbc, 0x8d, 0x5e, 0xf1, 0x4c, 0x32, 0x7a, 0x90, 0x8f, 0xb3, 0xd9, 0xe6, 0x1e, 0xac, 0x74, 0x91, 0x5b, 0xdf, 0x2c, 0xe5},
+        {0x59, 0x9f, 0x4b, 0x8a, 0x36, 0xf4, 0xa7, 0x28, 0x91, 0x6e, 0x2b, 0x5d, 0xc9, 0x72, 0xf2, 0x13, 0x46, 0x8e, 0x93, 0xb4, 0xd7, 0x6a, 0xe1, 0x5f, 0x0b, 0xc4, 0x89, 0x71, 0x3d, 0x2a, 0x94, 0xfc},
+    };
 
     /* Hash one time */
-    unsigned char hash_ctr_buffer[SHA256_OUTPUT_LEN + sizeof(ctr)];
+    unsigned char hash_ctr_buffer[SHA256_OUTPUT_LEN + 4];
     blake2b_256(hash_ctr_buffer, message, message_len);
 
+    if (check_if_indices_are_distinc(hash_ctr_buffer, k, (int)log2(t), indices))
+        return 1;
+
+
+    /* XOR with pads 1-3 and try again */
+    for(int j=0; j<3; j++) {
+        for(int i=0;i<32;i++)
+            hash_ctr_buffer[i] ^= pads[j][i];
+        if (check_if_indices_are_distinc(hash_ctr_buffer, k, (int)log2(t), indices))
+            return 1;
+    }
+
+    /* Use Ctr to resolve */
     unsigned char target_hash[SHA256_OUTPUT_LEN];
     mempcpy(hash_ctr_buffer + SHA256_OUTPUT_LEN, &ctr, sizeof(ctr));
     blake2b_256(target_hash, hash_ctr_buffer, SHA256_OUTPUT_LEN + sizeof(ctr));
 
-    for (int i = 0; i < k; i++) {
-        new_indices[i] = read_bits_as_4bytes(target_hash, i + 1, (int) log2(t));
-        indices[i] = new_indices[i];
-    }
-    /* Check if the new indices are distinct parts */
-    merge_sort(new_indices, 0, k - 1);
-    for (int i = 1; i < k; i++) {
-        if (new_indices[i] == new_indices[i - 1]) {
-            free(new_indices);
-            return 0;
-        }
-    }
+    if (check_if_indices_are_distinc(target_hash, k, (int)log2(t), indices))
+        return 1;
 
-    free(new_indices);
-    return 1;
+    return 0;
 }
 
 int mumhors_sign_message(mumhors_signer_t *signer, const unsigned char *message, int message_len) {
