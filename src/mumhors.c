@@ -70,7 +70,7 @@ void mumhors_delete_signer(mumhors_signer_t *signer) {
     bitmap_delete(&signer->bm);
 }
 
-static int check_if_indices_are_distinc(unsigned char* value, int k, int chunk, int* message_indices) {
+static int check_if_indices_are_distinc(unsigned char *value, int k, int chunk, int *message_indices) {
     int *new_indices = malloc(sizeof(int) * k);
 
     for (int i = 0; i < k; i++) {
@@ -79,7 +79,7 @@ static int check_if_indices_are_distinc(unsigned char* value, int k, int chunk, 
     }
 
     merge_sort(new_indices, 0, k - 1);
-    for (int i = 1; i < k; i++){
+    for (int i = 1; i < k; i++) {
         if (new_indices[i] == new_indices[i - 1]) {
             free(new_indices);
             return 1;
@@ -90,32 +90,38 @@ static int check_if_indices_are_distinc(unsigned char* value, int k, int chunk, 
 }
 
 int total = 0;
-static int perform_rejection_sampling(const unsigned char *message, int message_len, int k, int t,
-    int *message_indices) {
 
+static int perform_rejection_sampling(const unsigned char *message, int message_len, int k, int t,
+                                      int *message_indices) {
     unsigned char pads[3][32] = {
-        {0x6b, 0x8f, 0x34, 0x1a, 0xdf, 0x21, 0x5e, 0xa3, 0x79, 0x2d, 0xe7, 0xc1, 0x5b, 0x6a, 0x1b, 0x3f, 0x5c, 0xe0, 0x1d, 0x8b, 0x3d, 0xf2, 0x7e, 0x4a, 0xe8, 0xb1, 0x5d, 0x9c, 0x6f, 0x43, 0x84, 0x2e},
-        {0xab, 0xf9, 0x27, 0xcd, 0x12, 0xe3, 0x89, 0x45, 0xd8, 0x66, 0x97, 0xa4, 0xbc, 0x8d, 0x5e, 0xf1, 0x4c, 0x32, 0x7a, 0x90, 0x8f, 0xb3, 0xd9, 0xe6, 0x1e, 0xac, 0x74, 0x91, 0x5b, 0xdf, 0x2c, 0xe5},
-        {0x59, 0x9f, 0x4b, 0x8a, 0x36, 0xf4, 0xa7, 0x28, 0x91, 0x6e, 0x2b, 0x5d, 0xc9, 0x72, 0xf2, 0x13, 0x46, 0x8e, 0x93, 0xb4, 0xd7, 0x6a, 0xe1, 0x5f, 0x0b, 0xc4, 0x89, 0x71, 0x3d, 0x2a, 0x94, 0xfc},
+        {
+            0x6b, 0x8f, 0x34, 0x1a, 0xdf, 0x21, 0x5e, 0xa3, 0x79, 0x2d, 0xe7, 0xc1, 0x5b, 0x6a, 0x1b, 0x3f, 0x5c, 0xe0,
+            0x1d, 0x8b, 0x3d, 0xf2, 0x7e, 0x4a, 0xe8, 0xb1, 0x5d, 0x9c, 0x6f, 0x43, 0x84, 0x2e
+        },
+        {
+            0xab, 0xf9, 0x27, 0xcd, 0x12, 0xe3, 0x89, 0x45, 0xd8, 0x66, 0x97, 0xa4, 0xbc, 0x8d, 0x5e, 0xf1, 0x4c, 0x32,
+            0x7a, 0x90, 0x8f, 0xb3, 0xd9, 0xe6, 0x1e, 0xac, 0x74, 0x91, 0x5b, 0xdf, 0x2c, 0xe5
+        },
+        {
+            0x59, 0x9f, 0x4b, 0x8a, 0x36, 0xf4, 0xa7, 0x28, 0x91, 0x6e, 0x2b, 0x5d, 0xc9, 0x72, 0xf2, 0x13, 0x46, 0x8e,
+            0x93, 0xb4, 0xd7, 0x6a, 0xe1, 0x5f, 0x0b, 0xc4, 0x89, 0x71, 0x3d, 0x2a, 0x94, 0xfc
+        },
     };
 
     /* Hash one time */
     unsigned char hash_ctr_buffer[SHA256_OUTPUT_LEN + 4];
     blake2b_256(hash_ctr_buffer, message, message_len);
 
-    if (check_if_indices_are_distinc(hash_ctr_buffer, k, (int)log2(t), message_indices))
+    if (check_if_indices_are_distinc(hash_ctr_buffer, k, (int) log2(t), message_indices))
         return 0;
 
 
-
     /* XOR with pads 1-3 and try again */
-    for(int j=0; j<3; j++) {
-        for(int i=0;i<32;i++)
+    for (int j = 0; j < 3; j++) {
+        for (int i = 0; i < 32; i++)
             hash_ctr_buffer[i] ^= pads[j][i];
-        if (check_if_indices_are_distinc(hash_ctr_buffer, k, (int)log2(t), message_indices))
+        if (check_if_indices_are_distinc(hash_ctr_buffer, k, (int) log2(t), message_indices))
             return 0;
-
-
     }
 
     /* Use Ctr to resolve */
@@ -125,7 +131,7 @@ static int perform_rejection_sampling(const unsigned char *message, int message_
         mempcpy(hash_ctr_buffer + SHA256_OUTPUT_LEN, &ctr, sizeof(ctr));
         blake2b_256(hash_result, hash_ctr_buffer, SHA256_OUTPUT_LEN + sizeof(ctr));
 
-        if (check_if_indices_are_distinc(hash_result, k, (int)log2(t), message_indices))
+        if (check_if_indices_are_distinc(hash_result, k, (int) log2(t), message_indices))
             return ctr;
         ctr++;
 
@@ -140,24 +146,33 @@ static int perform_rejection_sampling(const unsigned char *message, int message_
 static int check_rejection_sampling(const unsigned char *message, int message_len, int k, int t, int *indices,
                                     unsigned int ctr) {
     unsigned char pads[3][32] = {
-        {0x6b, 0x8f, 0x34, 0x1a, 0xdf, 0x21, 0x5e, 0xa3, 0x79, 0x2d, 0xe7, 0xc1, 0x5b, 0x6a, 0x1b, 0x3f, 0x5c, 0xe0, 0x1d, 0x8b, 0x3d, 0xf2, 0x7e, 0x4a, 0xe8, 0xb1, 0x5d, 0x9c, 0x6f, 0x43, 0x84, 0x2e},
-        {0xab, 0xf9, 0x27, 0xcd, 0x12, 0xe3, 0x89, 0x45, 0xd8, 0x66, 0x97, 0xa4, 0xbc, 0x8d, 0x5e, 0xf1, 0x4c, 0x32, 0x7a, 0x90, 0x8f, 0xb3, 0xd9, 0xe6, 0x1e, 0xac, 0x74, 0x91, 0x5b, 0xdf, 0x2c, 0xe5},
-        {0x59, 0x9f, 0x4b, 0x8a, 0x36, 0xf4, 0xa7, 0x28, 0x91, 0x6e, 0x2b, 0x5d, 0xc9, 0x72, 0xf2, 0x13, 0x46, 0x8e, 0x93, 0xb4, 0xd7, 0x6a, 0xe1, 0x5f, 0x0b, 0xc4, 0x89, 0x71, 0x3d, 0x2a, 0x94, 0xfc},
+        {
+            0x6b, 0x8f, 0x34, 0x1a, 0xdf, 0x21, 0x5e, 0xa3, 0x79, 0x2d, 0xe7, 0xc1, 0x5b, 0x6a, 0x1b, 0x3f, 0x5c, 0xe0,
+            0x1d, 0x8b, 0x3d, 0xf2, 0x7e, 0x4a, 0xe8, 0xb1, 0x5d, 0x9c, 0x6f, 0x43, 0x84, 0x2e
+        },
+        {
+            0xab, 0xf9, 0x27, 0xcd, 0x12, 0xe3, 0x89, 0x45, 0xd8, 0x66, 0x97, 0xa4, 0xbc, 0x8d, 0x5e, 0xf1, 0x4c, 0x32,
+            0x7a, 0x90, 0x8f, 0xb3, 0xd9, 0xe6, 0x1e, 0xac, 0x74, 0x91, 0x5b, 0xdf, 0x2c, 0xe5
+        },
+        {
+            0x59, 0x9f, 0x4b, 0x8a, 0x36, 0xf4, 0xa7, 0x28, 0x91, 0x6e, 0x2b, 0x5d, 0xc9, 0x72, 0xf2, 0x13, 0x46, 0x8e,
+            0x93, 0xb4, 0xd7, 0x6a, 0xe1, 0x5f, 0x0b, 0xc4, 0x89, 0x71, 0x3d, 0x2a, 0x94, 0xfc
+        },
     };
 
     /* Hash one time */
     unsigned char hash_ctr_buffer[SHA256_OUTPUT_LEN + 4];
     blake2b_256(hash_ctr_buffer, message, message_len);
 
-    if (check_if_indices_are_distinc(hash_ctr_buffer, k, (int)log2(t), indices))
+    if (check_if_indices_are_distinc(hash_ctr_buffer, k, (int) log2(t), indices))
         return 1;
 
 
     /* XOR with pads 1-3 and try again */
-    for(int j=0; j<3; j++) {
-        for(int i=0;i<32;i++)
+    for (int j = 0; j < 3; j++) {
+        for (int i = 0; i < 32; i++)
             hash_ctr_buffer[i] ^= pads[j][i];
-        if (check_if_indices_are_distinc(hash_ctr_buffer, k, (int)log2(t), indices))
+        if (check_if_indices_are_distinc(hash_ctr_buffer, k, (int) log2(t), indices))
             return 1;
     }
 
@@ -166,7 +181,7 @@ static int check_rejection_sampling(const unsigned char *message, int message_le
     mempcpy(hash_ctr_buffer + SHA256_OUTPUT_LEN, &ctr, sizeof(ctr));
     blake2b_256(target_hash, hash_ctr_buffer, SHA256_OUTPUT_LEN + sizeof(ctr));
 
-    if (check_if_indices_are_distinc(target_hash, k, (int)log2(t), indices))
+    if (check_if_indices_are_distinc(target_hash, k, (int) log2(t), indices))
         return 1;
 
     return 0;
@@ -264,7 +279,7 @@ static int mumhors_verifier_cleanup_rows(mumhors_verifier_t *verifier) {
             if (pk_row == verifier->pk_matrix.head)
                 verifier->pk_matrix.head = verifier->pk_matrix.head->next;
             else {
-                public_key_t * prev = verifier->pk_matrix.head;
+                public_key_t *prev = verifier->pk_matrix.head;
                 while (prev->next != pk_row) { prev = prev->next; }
                 prev->next = pk_row->next;
 
@@ -472,7 +487,7 @@ static int verify_signature_using_virtual_matrix(mumhors_verifier_t *verifier, i
 
 
 int mumhors_verify_signature(mumhors_verifier_t *verifier, const mumhors_signature_t *signature,
-                            const unsigned char *message, int message_len) {
+                             const unsigned char *message, int message_len) {
     int *message_indices = malloc(sizeof(int) * verifier->k);
 
     /* Extract the indices from the hash of the message while ensuring they are different
