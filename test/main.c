@@ -6,10 +6,6 @@
 #include <sys/time.h>
 #include <assert.h>
 
-struct Test {
-    unsigned char arr[130];
-};
-
 int main(int argc, char **argv) {
     if (argc < 8) {
         printf("|HELP|\n\tRun:\n");
