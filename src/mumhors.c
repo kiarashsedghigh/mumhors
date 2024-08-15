@@ -89,8 +89,6 @@ static int check_if_indices_are_distinc(unsigned char *value, int k, int chunk, 
     return 0;
 }
 
-int total = 0;
-
 static int perform_rejection_sampling(const unsigned char *message, int message_len, int k, int t,
                                       int *message_indices) {
     unsigned char pads[3][32] = {
