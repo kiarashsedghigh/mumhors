@@ -196,6 +196,7 @@ int mumhors_sign_message(mumhors_signer_t *signer, const unsigned char *message,
      * through a process known as rejection sampling. */
     signer->signature.ctr = perform_rejection_sampling(message, message_len, signer->k, signer->t, message_indices);
 
+    unsigned char *new_seed = malloc(signer->seed_len + 4 + 4);
 
     for (int i = 0; i < signer->k; i++) {
         int row_number, col_number;
@@ -205,14 +206,13 @@ int mumhors_sign_message(mumhors_signer_t *signer, const unsigned char *message,
         /* Create the respective private key and build the signature */
         /* Create the respective private key and build the signature */
         unsigned char sk[SHA256_OUTPUT_LEN];
-        unsigned char *new_seed = malloc(signer->seed_len + 4 + 4);
         memcpy(new_seed, signer->seed, signer->seed_len);
         memcpy(new_seed + signer->seed_len, &row_number, 4);
         memcpy(new_seed + signer->seed_len + 4, &col_number, 4);
         blake2b_256(sk, new_seed, signer->seed_len + 4 + 4);
         memcpy(signer->signature.signature + i * SHA256_OUTPUT_LEN, sk, SHA256_OUTPUT_LEN);
-        free(new_seed);
     }
+    free(new_seed);
     /* Unsetting the indices in the bitmap */
     bitmap_unset_indices_in_window(&signer->bm, message_indices, signer->k);
     free(message_indices);
@@ -447,9 +447,10 @@ static int verify_signature_using_virtual_matrix(mumhors_verifier_t *verifier, i
 
     int index_diff = 0;
     for (int i = 0; i < num_indices; i++) {
-        if (i > 0 && indices[i] == indices[i - 1]) continue;
-        int target_index = indices[i] - index_diff;
-        index_diff++;
+        int target_index = indices[i];
+        // if (i > 0 && indices[i] == indices[i - 1]) continue;
+        // int target_index = indices[i] - index_diff;
+        // index_diff++;
 
         /* Invalidate the target index */
         public_key_t *pk_row = verifier->pk_matrix.head;

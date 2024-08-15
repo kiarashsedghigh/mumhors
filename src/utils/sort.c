@@ -17,7 +17,7 @@ static void merge(int *arr, int l, int m, int r) {
     j = 0;
     k = l;
     while (i < n1 && j < n2) {
-        if (L[i] <= R[j]) {
+        if (L[i] >= R[j]) {
             arr[k] = L[i];
             i++;
         }

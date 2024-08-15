@@ -550,13 +550,8 @@ void bitmap_unset_indices_in_window(bitmap_t *bm, int *indices, int num_index) {
      * */
     merge_sort(indices, 0, num_index - 1);
 
-
-    int index_diff = 0;
     for (int i = 0; i < num_index; i++) {
-        if (i > 0 && indices[i] == indices[i - 1]) continue;
-        int target_index = indices[i] - index_diff;
-        index_diff++;
-
+        int target_index = indices[i];
 
         row_t *row;
 #ifdef BITMAP_LIST
