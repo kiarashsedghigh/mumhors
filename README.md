@@ -1,7 +1,9 @@
 # MUM-HORS
 <p>
 <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT License-%23ffb243?style=flat-square"></a>
+<a href="CMAKE"><img src="https://img.shields.io/badge/cmake-3.22%2B-blue.svg">
 </p>
+
 
 Maximum Utilization Multiple HORS (MUM-HORS) is a new implementation of 
 HORS signature in which the utilization of private keys and
@@ -31,8 +33,7 @@ The circular queue variant is optimized for scenarios where a fixed number of ke
 Before you begin, ensure you have met the following requirements:
 - **Libtomcrypt**: v1.18.2 or higher
 - **Openssl**
-- **CMake**: 3.22 or higher ![CMake](https://img.shields.io/badge/cmake-3.22%2B-blue.svg)
-
+- **CMake**: 3.22 or higher 
 
 # Building
 To install first:

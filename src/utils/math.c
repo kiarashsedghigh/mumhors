@@ -29,6 +29,5 @@ int byte_get_index_nth_set(unsigned char byte, int nth) {
         bit_idx++;
         nth--;
     }
-
     return bit_idx - 1;
 }
