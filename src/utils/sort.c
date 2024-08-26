@@ -1,7 +1,5 @@
 #include "sort.h"
 
-
-
 static void merge(int *arr, int l, int m, int r) {
     int i, j, k;
     int n1 = m - l + 1;
@@ -41,14 +39,34 @@ static void merge(int *arr, int l, int m, int r) {
     }
 }
 
-void merge_sort(int * arr, int l, int r){
+static void merge_sort_desc(int * arr, int l, int r){
     if (l < r) {
         int m = l + (r - l) / 2;
 
-        merge_sort(arr, l, m);
-        merge_sort(arr, m + 1, r);
+        merge_sort_desc(arr, l, m);
+        merge_sort_desc(arr, m + 1, r);
 
         merge(arr, l, m, r);
     }
+}
+
+
+static void insertion_sort_desc(int* arr, const int n) {
+    for (int i = 1; i < n; i++) {
+        int key = arr[i];
+        int j = i - 1;
+
+        while (j >= 0 && arr[j] < key) {
+            arr[j + 1] = arr[j];
+            j = j - 1;
+        }
+
+        arr[j + 1] = key;
+    }
+}
+
+void array_sort(int* arr, const int n) {
+    // insertion_sort_desc(arr, n);
+    merge_sort_desc(arr, 0, n - 1);
 }
 

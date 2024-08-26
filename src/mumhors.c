@@ -70,7 +70,7 @@ void mumhors_delete_signer(mumhors_signer_t *signer) {
     bitmap_delete(&signer->bm);
 }
 
-static int check_if_indices_are_distinc(unsigned char *value, int k, int chunk, int *message_indices) {
+static int check_if_indices_are_distinct(unsigned char *value, int k, int chunk, int *message_indices) {
     int *new_indices = malloc(sizeof(int) * k);
 
     for (int i = 0; i < k; i++) {
@@ -78,15 +78,16 @@ static int check_if_indices_are_distinc(unsigned char *value, int k, int chunk, 
         message_indices[i] = new_indices[i];
     }
 
-    merge_sort(new_indices, 0, k - 1);
+    array_sort(new_indices, k);
+
     for (int i = 1; i < k; i++) {
         if (new_indices[i] == new_indices[i - 1]) {
             free(new_indices);
-            return 1;
+            return 0;
         }
     }
     free(new_indices);
-    return 0;
+    return 1;
 }
 
 static int perform_rejection_sampling(const unsigned char *message, int message_len, int k, int t,
@@ -110,15 +111,16 @@ static int perform_rejection_sampling(const unsigned char *message, int message_
     unsigned char hash_ctr_buffer[SHA256_OUTPUT_LEN + 4];
     blake2b_256(hash_ctr_buffer, message, message_len);
 
-    if (check_if_indices_are_distinc(hash_ctr_buffer, k, (int) log2(t), message_indices))
+    if (check_if_indices_are_distinct(hash_ctr_buffer, k, (int) log2(t), message_indices))
         return 0;
 
 
     /* XOR with pads 1-3 and try again */
     for (int j = 0; j < 3; j++) {
+
         for (int i = 0; i < 32; i++)
             hash_ctr_buffer[i] ^= pads[j][i];
-        if (check_if_indices_are_distinc(hash_ctr_buffer, k, (int) log2(t), message_indices))
+        if (check_if_indices_are_distinct(hash_ctr_buffer, k, (int) log2(t), message_indices))
             return 0;
     }
 
@@ -129,7 +131,7 @@ static int perform_rejection_sampling(const unsigned char *message, int message_
         mempcpy(hash_ctr_buffer + SHA256_OUTPUT_LEN, &ctr, sizeof(ctr));
         blake2b_256(hash_result, hash_ctr_buffer, SHA256_OUTPUT_LEN + sizeof(ctr));
 
-        if (check_if_indices_are_distinc(hash_result, k, (int) log2(t), message_indices))
+        if (check_if_indices_are_distinct(hash_result, k, (int) log2(t), message_indices))
             return ctr;
         ctr++;
 
@@ -162,7 +164,7 @@ static int check_rejection_sampling(const unsigned char *message, int message_le
     unsigned char hash_ctr_buffer[SHA256_OUTPUT_LEN + 4];
     blake2b_256(hash_ctr_buffer, message, message_len);
 
-    if (check_if_indices_are_distinc(hash_ctr_buffer, k, (int) log2(t), indices))
+    if (check_if_indices_are_distinct(hash_ctr_buffer, k, (int) log2(t), indices))
         return 1;
 
 
@@ -170,7 +172,7 @@ static int check_rejection_sampling(const unsigned char *message, int message_le
     for (int j = 0; j < 3; j++) {
         for (int i = 0; i < 32; i++)
             hash_ctr_buffer[i] ^= pads[j][i];
-        if (check_if_indices_are_distinc(hash_ctr_buffer, k, (int) log2(t), indices))
+        if (check_if_indices_are_distinct(hash_ctr_buffer, k, (int) log2(t), indices))
             return 1;
     }
 
@@ -179,7 +181,7 @@ static int check_rejection_sampling(const unsigned char *message, int message_le
     mempcpy(hash_ctr_buffer + SHA256_OUTPUT_LEN, &ctr, sizeof(ctr));
     blake2b_256(target_hash, hash_ctr_buffer, SHA256_OUTPUT_LEN + sizeof(ctr));
 
-    if (check_if_indices_are_distinc(target_hash, k, (int) log2(t), indices))
+    if (check_if_indices_are_distinct(target_hash, k, (int) log2(t), indices))
         return 1;
 
     return 0;
@@ -227,7 +229,7 @@ int mumhors_sign_message(mumhors_signer_t *signer, const unsigned char *message,
 void
 mumhors_init_verifier(mumhors_verifier_t *verifier, public_key_matrix_t pk_matrix, int t, int k, int l, int r, int c,
                       int rt, int window_size) {
-    /* Setting the hyperparameters of the verifier */
+    /* Setting the hyper parameters of the verifier */
     verifier->t = t;
     verifier->k = k;
     verifier->l = l;
@@ -442,8 +444,7 @@ static int verify_signature_using_virtual_matrix(mumhors_verifier_t *verifier, i
      * fetching the values and then remove the indices.
      * */
     /* First sort the indices */
-    merge_sort(indices, 0, num_indices - 1);
-
+    array_sort(indices, num_indices);
 
     int index_diff = 0;
     for (int i = 0; i < num_indices; i++) {

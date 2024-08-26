@@ -548,7 +548,9 @@ void bitmap_unset_indices_in_window(bitmap_t *bm, int *indices, int num_index) {
      * we should maintain a data structure that returns back the actual order before sorting, or, first perform
      * fetching the values and then remove the indices.
      * */
-    merge_sort(indices, 0, num_index - 1);
+
+    array_sort(indices, num_index);
+
 
     for (int i = 0; i < num_index; i++) {
         int target_index = indices[i];
@@ -562,6 +564,7 @@ void bitmap_unset_indices_in_window(bitmap_t *bm, int *indices, int num_index) {
             target_index -= row->set_bits;
             row = row->next;
         }
+
 #elif BITMAP_ARRAY
         if (bm->bitmap_matrix.head <= bm->bitmap_matrix.tail) {
             for (int index = bm->bitmap_matrix.head; index <= bm->bitmap_matrix.tail; index++)
