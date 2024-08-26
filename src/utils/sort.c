@@ -66,7 +66,7 @@ static void insertion_sort_desc(int* arr, const int n) {
 }
 
 void array_sort(int* arr, const int n) {
-    // insertion_sort_desc(arr, n);
-    merge_sort_desc(arr, 0, n - 1);
+    insertion_sort_desc(arr, n);
+    // merge_sort_desc(arr, 0, n - 1);
 }
 

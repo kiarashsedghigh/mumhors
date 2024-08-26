@@ -70,8 +70,11 @@ void mumhors_delete_signer(mumhors_signer_t *signer) {
     bitmap_delete(&signer->bm);
 }
 
-static int check_if_indices_are_distinct(unsigned char *value, int k, int chunk, int *message_indices) {
+static int check_if_indices_are_distinct(unsigned char *value, int k, int chunk, int *message_indices,
+    int** sorted_indices) {
+
     int *new_indices = malloc(sizeof(int) * k);
+    *sorted_indices = new_indices;
 
     for (int i = 0; i < k; i++) {
         new_indices[i] = read_bits_as_4bytes(value, i + 1, chunk);
@@ -82,16 +85,14 @@ static int check_if_indices_are_distinct(unsigned char *value, int k, int chunk,
 
     for (int i = 1; i < k; i++) {
         if (new_indices[i] == new_indices[i - 1]) {
-            free(new_indices);
             return 0;
         }
     }
-    free(new_indices);
     return 1;
 }
 
 static int perform_rejection_sampling(const unsigned char *message, int message_len, int k, int t,
-                                      int *message_indices) {
+                                      int* message_indices, int** sorted_indices) {
     unsigned char pads[3][32] = {
         {
             0x6b, 0x8f, 0x34, 0x1a, 0xdf, 0x21, 0x5e, 0xa3, 0x79, 0x2d, 0xe7, 0xc1, 0x5b, 0x6a, 0x1b, 0x3f, 0x5c, 0xe0,
@@ -111,7 +112,7 @@ static int perform_rejection_sampling(const unsigned char *message, int message_
     unsigned char hash_ctr_buffer[SHA256_OUTPUT_LEN + 4];
     blake2b_256(hash_ctr_buffer, message, message_len);
 
-    if (check_if_indices_are_distinct(hash_ctr_buffer, k, (int) log2(t), message_indices))
+    if (check_if_indices_are_distinct(hash_ctr_buffer, k, (int) log2(t), message_indices, sorted_indices))
         return 0;
 
 
@@ -120,7 +121,7 @@ static int perform_rejection_sampling(const unsigned char *message, int message_
 
         for (int i = 0; i < 32; i++)
             hash_ctr_buffer[i] ^= pads[j][i];
-        if (check_if_indices_are_distinct(hash_ctr_buffer, k, (int) log2(t), message_indices))
+        if (check_if_indices_are_distinct(hash_ctr_buffer, k, (int) log2(t), message_indices, sorted_indices))
             return 0;
     }
 
@@ -131,7 +132,7 @@ static int perform_rejection_sampling(const unsigned char *message, int message_
         mempcpy(hash_ctr_buffer + SHA256_OUTPUT_LEN, &ctr, sizeof(ctr));
         blake2b_256(hash_result, hash_ctr_buffer, SHA256_OUTPUT_LEN + sizeof(ctr));
 
-        if (check_if_indices_are_distinct(hash_result, k, (int) log2(t), message_indices))
+        if (check_if_indices_are_distinct(hash_result, k, (int) log2(t), message_indices, sorted_indices))
             return ctr;
         ctr++;
 
@@ -144,7 +145,7 @@ static int perform_rejection_sampling(const unsigned char *message, int message_
 }
 
 static int check_rejection_sampling(const unsigned char *message, int message_len, int k, int t, int *indices,
-                                    unsigned int ctr) {
+                                    unsigned int ctr, int** sorted_indices) {
     unsigned char pads[3][32] = {
         {
             0x6b, 0x8f, 0x34, 0x1a, 0xdf, 0x21, 0x5e, 0xa3, 0x79, 0x2d, 0xe7, 0xc1, 0x5b, 0x6a, 0x1b, 0x3f, 0x5c, 0xe0,
@@ -164,7 +165,7 @@ static int check_rejection_sampling(const unsigned char *message, int message_le
     unsigned char hash_ctr_buffer[SHA256_OUTPUT_LEN + 4];
     blake2b_256(hash_ctr_buffer, message, message_len);
 
-    if (check_if_indices_are_distinct(hash_ctr_buffer, k, (int) log2(t), indices))
+    if (check_if_indices_are_distinct(hash_ctr_buffer, k, (int) log2(t), indices, sorted_indices))
         return 1;
 
 
@@ -172,7 +173,7 @@ static int check_rejection_sampling(const unsigned char *message, int message_le
     for (int j = 0; j < 3; j++) {
         for (int i = 0; i < 32; i++)
             hash_ctr_buffer[i] ^= pads[j][i];
-        if (check_if_indices_are_distinct(hash_ctr_buffer, k, (int) log2(t), indices))
+        if (check_if_indices_are_distinct(hash_ctr_buffer, k, (int) log2(t), indices, sorted_indices))
             return 1;
     }
 
@@ -181,7 +182,7 @@ static int check_rejection_sampling(const unsigned char *message, int message_le
     mempcpy(hash_ctr_buffer + SHA256_OUTPUT_LEN, &ctr, sizeof(ctr));
     blake2b_256(target_hash, hash_ctr_buffer, SHA256_OUTPUT_LEN + sizeof(ctr));
 
-    if (check_if_indices_are_distinct(target_hash, k, (int) log2(t), indices))
+    if (check_if_indices_are_distinct(target_hash, k, (int) log2(t), indices, sorted_indices))
         return 1;
 
     return 0;
@@ -196,7 +197,9 @@ int mumhors_sign_message(mumhors_signer_t *signer, const unsigned char *message,
 
     /* Extract the indices from the hash of the message while ensuring they are different
      * through a process known as rejection sampling. */
-    signer->signature.ctr = perform_rejection_sampling(message, message_len, signer->k, signer->t, message_indices);
+    int* sorted_indices;
+    signer->signature.ctr = perform_rejection_sampling(message, message_len, signer->k, signer->t, message_indices,
+        &sorted_indices);
 
     unsigned char *new_seed = malloc(signer->seed_len + 4 + 4);
 
@@ -216,7 +219,8 @@ int mumhors_sign_message(mumhors_signer_t *signer, const unsigned char *message,
     }
     free(new_seed);
     /* Unsetting the indices in the bitmap */
-    bitmap_unset_indices_in_window(&signer->bm, message_indices, signer->k);
+    bitmap_unset_indices_in_window(&signer->bm, sorted_indices, signer->k);
+    free(sorted_indices);
     free(message_indices);
 
     /* Extending the bitmap matrix for later usage. This can be optimized to be done every t/k messages */
@@ -381,7 +385,7 @@ static int mumhors_verifier_alloc_row_virtually(mumhors_verifier_t *verifier) {
 /// \param signature Pointer to the signature
 /// \return VERIFY_SIGNATURE_INVALID or VERIFY_SIGNATURE_INVALID, or VERIFY_SIGNATURE_VALID
 static int verify_signature_using_virtual_matrix(mumhors_verifier_t *verifier, int *indices, int num_indices,
-                                                 const unsigned char *signature) {
+                                                 const unsigned char *signature, int* sorted_indices) {
     if (verifier->windows_size > verifier->active_pks) {
         if (mumhors_verifier_alloc_row_virtually(verifier) == PKMATRIX_NO_MORE_ROWS_TO_ALLOCATE)
             return VERIFY_SIGNATURE_INVALID;
@@ -444,11 +448,11 @@ static int verify_signature_using_virtual_matrix(mumhors_verifier_t *verifier, i
      * fetching the values and then remove the indices.
      * */
     /* First sort the indices */
-    array_sort(indices, num_indices);
+    // array_sort(indices, num_indices);
 
     int index_diff = 0;
     for (int i = 0; i < num_indices; i++) {
-        int target_index = indices[i];
+        int target_index = sorted_indices[i];
         // if (i > 0 && indices[i] == indices[i - 1]) continue;
         // int target_index = indices[i] - index_diff;
         // index_diff++;
@@ -492,11 +496,13 @@ int mumhors_verify_signature(mumhors_verifier_t *verifier, const mumhors_signatu
 
     /* Extract the indices from the hash of the message while ensuring they are different
      * through a process known as rejection sampling. */
-    if (check_rejection_sampling(message, message_len, verifier->k, verifier->t, message_indices, signature->ctr) == 0)
+    int* sorted_indices; //TODO cleanup
+    if (check_rejection_sampling(message, message_len, verifier->k, verifier->t, message_indices, signature->ctr,
+        &sorted_indices) == 0)
         return VERIFY_SIGNATURE_INVALID;
 
     int verify_status = verify_signature_using_virtual_matrix(verifier, message_indices, verifier->k,
-                                                              signature->signature);
+                                                              signature->signature, sorted_indices);
 
     free(message_indices);
 

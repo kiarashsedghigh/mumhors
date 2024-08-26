@@ -533,6 +533,8 @@ extract_manipulate_indices:
 
 
 void bitmap_unset_indices_in_window(bitmap_t *bm, int *indices, int num_index) {
+    // array_sort(indices, num_index);
+
 #ifdef JOURNAL
     bm->bitmap_report.cnt_cnt_unset_call++;
     gettimeofday(&start_time, NULL);
@@ -548,9 +550,6 @@ void bitmap_unset_indices_in_window(bitmap_t *bm, int *indices, int num_index) {
      * we should maintain a data structure that returns back the actual order before sorting, or, first perform
      * fetching the values and then remove the indices.
      * */
-
-    array_sort(indices, num_index);
-
 
     for (int i = 0; i < num_index; i++) {
         int target_index = indices[i];
