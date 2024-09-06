@@ -50,5 +50,4 @@ add_executable(mumhors
         src/crypto/blake/tomcrypt_pk.h
         src/crypto/blake/tomcrypt_pkcs.h
         src/crypto/blake/tomcrypt_prng.h
-#        backup/verifier.c
 )

@@ -442,7 +442,6 @@ static void change_pk_status_from_doubt(mumhors_verifier_t *verifier, public_key
                 start_row->doubt_pks--;
 
                 if (status == MUM_PK_INVALID) {
-                    start_row->doubt_pks--;
                     start_row->available_pks--;
                     verifier->active_pks--;
                 }
@@ -453,50 +452,6 @@ static void change_pk_status_from_doubt(mumhors_verifier_t *verifier, public_key
         start_row = start_row->next;
     }
 }
-
-static void make_pk_invalid(mumhors_verifier_t *verifier, public_key_row_t *end_row, int end_col,
-                            public_key_row_t **pk_rows_nv2q,
-                            int *pk_index_nv2q, int nv2qidx) {
-    int real_end_col = 1024;
-
-    // public_key_row_t* pk_rows_nv2q[100];
-    // int pk_index_nv2q[100];
-
-    public_key_row_t *start_row = verifier->pk_matrix.head;
-    int column = 0;
-
-    while (1) {
-        printf("QWEQWE %d\n", end_col);
-        if (start_row == end_row)
-            real_end_col = end_col;
-
-        for (int i = 0; i < real_end_col; i++) {
-            if (start_row->pks[i]->type == MUM_PK_DOUBT) {
-                // printf("%d ", i);
-                // for (int k = 0; k < nv2qidx; k++) {
-                //     if ((pk_rows_nv2q[k] == start_row) && (pk_index_nv2q[k] == i)) {
-                //         printf("CRITICA\n");
-                //         exit(0);
-                //         pk_rows_nv2q[k] = NULL;
-                //     }
-                // }
-
-
-                start_row->pks[i]->type = MUM_PK_INVALID;
-                start_row->available_pks--;
-                verifier->active_pks--;
-            }
-        }
-        if (start_row == end_row) {
-            break;
-        }
-
-        start_row = start_row->next;
-    }
-
-    printf("\n");
-}
-
 
 static void pk_remove_signature(mumhors_verifier_t *verifier, unsigned char *sk_hash) {
     int rt = verifier->rt;
@@ -545,7 +500,7 @@ static int verify_signature_using_virtual_matrix(mumhors_verifier_t *verifier, c
     /* A buffer for extracting the private key from the signature */
     unsigned char *sk = malloc(verifier->l / 8);
 
-    int *sorted_indices = malloc(sizeof(int) * num_indices); //todo free at end
+    int *sorted_indices = malloc(sizeof(int) * num_indices);
     for (int i = 0; i < num_indices; i++)
         sorted_indices[i] = indices[i];
     array_sort_asc(sorted_indices, num_indices);
@@ -581,7 +536,6 @@ static int verify_signature_using_virtual_matrix(mumhors_verifier_t *verifier, c
         int cnt_doubt_pk = 0;
         int cnt_valid_pk = 0;
 
-
         while (pk_row_start) {
             if (target_index < pk_row_start->available_pks)
                 break;
@@ -608,7 +562,6 @@ static int verify_signature_using_virtual_matrix(mumhors_verifier_t *verifier, c
                     cnt_doubt_pk++;
             }
         }
-
 
         /* Compare the hash with the current public key*/
         if (strncmp(target_pk->public_key, sk_hash, SHA256_OUTPUT_LEN) != 0) {
@@ -653,8 +606,6 @@ static int verify_signature_using_virtual_matrix(mumhors_verifier_t *verifier, c
                              */
                             if (cnt_next_pks_to_check == 0) {
                                 // change_pk_status_from_doubt(verifier, pk_row_start, k, MUM_PK_INVALID);
-                                make_pk_invalid(verifier, pk_row_start, k, pk_rows_nv2q, pk_rows_nv2q, nv2qidx);
-
 
                                 nv2qidx--;
                             }
@@ -672,10 +623,7 @@ static int verify_signature_using_virtual_matrix(mumhors_verifier_t *verifier, c
         reject_signature:
             ver_status = 0;
 
-
         accept_signature:
-
-
 
         } else {
             /* Mark the public key of index i as verified and mark to be deleted */
@@ -727,6 +675,15 @@ static int verify_signature_using_virtual_matrix(mumhors_verifier_t *verifier, c
     gettimeofday(&end_time, NULL);
     mumhors_verify_time += (end_time.tv_sec - start_time.tv_sec) + (end_time.tv_usec - start_time.tv_usec) / 1.0e6;
 #endif
+
+    free(sk);
+    free(pk_rows_nv2q);
+    free(pk_index_nv2q);
+    free(pk_index_v2d);
+    free(pk_rows_v2d);
+    free(pk_ver_status);
+    free(sorted_indices);
+
     if (!ver_status)
         return VERIFY_SIGNATURE_INVALID;
 

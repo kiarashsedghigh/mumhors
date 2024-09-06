@@ -89,8 +89,8 @@ int main(int argc, char **argv) {
         /* (Optional) Specify the messages to be corrupted. Either the message or its signature,
          * not both at the same time */
         // if(message_index == 0 || message_index==78) {
-        //     // signer.signature.signature[0] = 0x12;
-        //     message[0] = 0xff;
+        // // signer.signature.signature[0] = 0x12;
+        // message[0] = 0xff;
         // }
 
         if (mumhors_verify_signature(&verifier, &signer.signature, message, SHA256_OUTPUT_LEN) ==
