@@ -33,7 +33,7 @@ end
 % Example usage:
 t = 1024;  % Given value
 k = 25;    % Given value
-alpha = 0.9;  % Given value
+alpha = 0.99;  % Given value
 
 rt = solve_rt(t, k, alpha);
 disp(['The value of rt is: ', num2str(rt)]);

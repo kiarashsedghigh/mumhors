@@ -3,7 +3,6 @@
 #include <assert.h>
 #include <stdio.h>
 #include "bitmap.h"
-#include "sort.h"
 #include "math.h"
 #include <sys/time.h>
 
@@ -379,7 +378,6 @@ static int bitmap_allocate_more_row(bitmap_t *bm) {
                 BITMAP_AND_FIND_ROW_WITH_MINIMUM_BITS(0, bm->bitmap_matrix.tail)
             }
             bitmap_remove_row_by_index(bm, target_index);
-
 #endif
         }
     }
@@ -645,7 +643,7 @@ void bitmap_report(const bitmap_t *bm) {
     printf("--- Discarded bits: %d/%d\n", bm->bitmap_report.cnt_discarded_bits, bm->r * BYTES2BITS(bm->cB));
 
     /* Timing */
-    printf("\n------- Timings -------\n");
+    printf("\n------- Bitmap Timings -------\n");
     printf("--- TT Cleanup: %0.12f micros\n", bm->bitmap_report.total_time_cleanup * 1000000);
     printf("--- TT Direct Remove Row: %0.12f micros\n", bm->bitmap_report.total_time_remove_row * 1000000);
     printf("--- TT Get Row Col: %0.12f micros\n", bm->bitmap_report.total_time_get_row_col * 1000000);

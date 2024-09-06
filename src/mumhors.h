@@ -32,18 +32,36 @@ typedef struct mumhors_signer {
     mumhors_signature_t signature; /* Signature of the message signed by the signer */
 } mumhors_signer_t;
 
+
+/* Type of each public key which be:
+ *      Valid: Public key is valid to be used
+ *      Doubt: Public key can be valid or can be invalid (uncertain)
+ *      Invalid: Public key is invalid and will not be used
+ */
+#define MUM_PK_VALID 0
+#define MUM_PK_DOUBT 1
+#define MUM_PK_INVALID 2
+
 /// Public key node
 typedef struct public_key {
-    int available_pks; /* Number of available public keys */
-    int number; /* Public key row number */
-    unsigned char **pks; /* An array of public keys */
-    struct public_key *next; /* Pointer to the next row of the matrix */
+    unsigned char *public_key;
+    int type;
 } public_key_t;
+
+
+/// Public key row
+typedef struct public_key_row {
+    int available_pks; /* Number of available public keys */
+    int doubt_pks; /* Number of uncertain public keys in the row */
+    int number; /* Public key row number */
+    public_key_t **pks; /* An array of public keys */
+    struct public_key_row *next; /* Pointer to the next row of the matrix */
+} public_key_row_t;
 
 /// Public key matrix (linked list)
 typedef struct public_key_matrix {
-    public_key_t *head; /* Pointer to the first public key row in the matrix */
-    public_key_t *tail; /* Pointer to the last public key row in the matrix */
+    public_key_row_t *head; /* Pointer to the first public key row in the matrix */
+    public_key_row_t *tail; /* Pointer to the last public key row in the matrix */
 } public_key_matrix_t;
 
 /// Struct for MUMHORS verifier
@@ -119,4 +137,13 @@ int mumhors_sign_message(mumhors_signer_t *signer, const unsigned char *message,
 /// \return
 int mumhors_verify_signature(mumhors_verifier_t *verifier, const mumhors_signature_t *signature,
                              const unsigned char *message, int message_len);
+
+
+#ifdef JOURNAL
+/// Reports the signing and verification time of the MUMHORS
+/// \param total_tests Total number of test cases passed
+void mumhors_report_time(int total_tests);
+#endif
+
+
 #endif

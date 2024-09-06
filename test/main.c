@@ -6,13 +6,13 @@
 #include <sys/time.h>
 #include <assert.h>
 
+
 int main(int argc, char **argv) {
     if (argc < 8) {
         printf("|HELP|\n\tRun:\n");
         printf("\t\t mumhors T K L R RT TESTS SEED_FILE\n");
         exit(1);
     }
-
     /*
      * Reading the seed
      */
@@ -58,8 +58,6 @@ int main(int argc, char **argv) {
      *  Signing and Verifying
      *
      */
-    double sign_time = 0;
-    double verify_time = 0;
 
     /* Create and initialize the signer */
     mumhors_signer_t signer;
@@ -73,55 +71,44 @@ int main(int argc, char **argv) {
     debug("Running the test cases ...", DEBUG_INF);
 
     /* Generating random messages from a message seed by hashing it and using it as a new message */
-    unsigned char buffer1[SHA256_OUTPUT_LEN];
-    unsigned char buffer2[SHA256_OUTPUT_LEN];
-    unsigned char *message = buffer1;
-    unsigned char *hash = buffer2;
+    unsigned char message[SHA256_OUTPUT_LEN];
     blake2b_256(message, seed, seed_len);
 
-    int *message_indices = malloc(sizeof(int) * k);
+    /* Count number of messages that the signature was rejected for any reason (message/signature corruption)  */
+    int cnt_rejected_message_signatures = 0;
 
-    /* Creating randomized messages */
-    int message_index;
-    for (message_index = 0; message_index < tests; message_index++) {
+    for (int message_index = 0; message_index < tests; message_index++) {
         printf("\r[%d/%d]", message_index, tests);
         fflush(stdout);
 
-        gettimeofday(&start_time, NULL);
         if (mumhors_sign_message(&signer, message, SHA256_OUTPUT_LEN) == SIGN_NO_MORE_ROW_FAILED) {
             debug("\n\n[Signer] No more rows are left to sign", DEBUG_INF);
             break;
         }
-        gettimeofday(&end_time, NULL);
-        sign_time += (end_time.tv_sec - start_time.tv_sec) + (end_time.tv_usec - start_time.tv_usec) / 1.0e6;
 
-        gettimeofday(&start_time, NULL);
+        /* (Optional) Specify the messages to be corrupted. Either the message or its signature,
+         * not both at the same time */
+        // if(message_index == 0 || message_index==78) {
+        //     // signer.signature.signature[0] = 0x12;
+        //     message[0] = 0xff;
+        // }
+
         if (mumhors_verify_signature(&verifier, &signer.signature, message, SHA256_OUTPUT_LEN) ==
-            VERIFY_SIGNATURE_INVALID) {
-            printf("\n\n[Verifier] Signature verification invalid %d\n", message_index);
-            break;
-        }
-        gettimeofday(&end_time, NULL);
-        verify_time += (end_time.tv_sec - start_time.tv_sec) + (end_time.tv_usec - start_time.tv_usec) / 1.0e6;
+            VERIFY_SIGNATURE_INVALID)
+            cnt_rejected_message_signatures++;
 
-        /* Now, use the hash as the next message by swapping the pointers */
-        blake2b_256(hash, message, SHA256_OUTPUT_LEN);
-        unsigned char *swap = hash;
-        hash = message;
-        message = swap;
+        /* Generate the next message */
+        blake2b_256(message, message, SHA256_OUTPUT_LEN);
     }
 
-    printf("\r");
     printf("\n================ MUM-HORS Report ================\n");
-    printf("Signed message: %d/%d\n", message_index, tests);
-    printf("Sign time: %0.12f\n", sign_time);
-    printf("Verify time: %0.12f\n", verify_time);
+    printf("Accepted signatures: %d/%d (%d rejected)\n", tests - cnt_rejected_message_signatures, tests, cnt_rejected_message_signatures);
 
     #ifdef JOURNAL
+        mumhors_report_time(tests);
         bitmap_report(&signer.bm);
     #endif
 
     mumhors_delete_verifier(&verifier);
     mumhors_delete_signer(&signer);
-    free(message_indices);
 }

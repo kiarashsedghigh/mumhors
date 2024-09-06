@@ -9,7 +9,7 @@ include_directories(src src/utils src/crypto)
 #    message(STATUS "No optimization flags (-O2 or -O3) have been passed.")
 #endif()
 
-add_compile_options(-O3 -w)
+add_compile_options(-O3 -w -DBITMAP_LIST -DJOURNAL)
 
 #set(CMAKE_CXX_FLAGS_RELEASE "-Os -ffunction-sections -fdata-sections -flto -DNDEBUG")
 #set(CMAKE_C_FLAGS_RELEASE "-Os -ffunction-sections -fdata-sections -flto -DNDEBUG")
@@ -50,4 +50,5 @@ add_executable(mumhors
         src/crypto/blake/tomcrypt_pk.h
         src/crypto/blake/tomcrypt_pkcs.h
         src/crypto/blake/tomcrypt_prng.h
+#        backup/verifier.c
 )
