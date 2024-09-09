@@ -581,36 +581,36 @@ void bitmap_unset_indices_in_window(bitmap_t *bm, int *indices, int num_index) {
             if (row->data[j]) {
                 // Skip 0 bytes
 
-                int cnt_ones = count_num_set_bits(row->data[j]);
-                //TODO performance remove later
-                // int num = row->data[j];
-                // int cnt_ones = 0;
-                // while (num) {
-                //     num &= num - 1;
-                //     cnt_ones += 1;
-                //     // cnt_ones += num & 1;
-                //     // num >>= 1;
-                // }
+                // int cnt_ones = count_num_set_bits(row->data[j]);
+                // TODO performance remove later
+                 int num = row->data[j];
+                 int cnt_ones = 0;
+                 while (num) {
+                     num &= num - 1;
+                     cnt_ones += 1;
+                     // cnt_ones += num & 1;
+                     // num >>= 1;
+                 }
 
                 if (target_index < cnt_ones) {
                     /* Find the real index of the target_index'th bit in the current byte */
 
-                    int bit_idx = byte_get_index_nth_set(row->data[j], target_index + 1);
+                    // int bit_idx = byte_get_index_nth_set(row->data[j], target_index + 1);
                     //TODO remove later
-                    // int bit_idx = 0;
-                    // int nth = target_index + 1;
-                    // unsigned char byte = row->data[j];
-                    // nth -= 1; // Converting nth to 0-based index
-                    // while (nth >= 0) {
-                    //     while ((byte & 128) != 128) {
-                    //         bit_idx++;
-                    //         byte <<= 1;
-                    //     }
-                    //     byte <<= 1;
-                    //     bit_idx++;
-                    //     nth--;
-                    // }
-                    // bit_idx--;
+                    int bit_idx = 0;
+                    int nth = target_index + 1;
+                    unsigned char byte = row->data[j];
+                    nth -= 1; // Converting nth to 0-based index
+                    while (nth >= 0) {
+                        while ((byte & 128) != 128) {
+                            bit_idx++;
+                            byte <<= 1;
+                        }
+                        byte <<= 1;
+                        bit_idx++;
+                        nth--;
+                    }
+                    bit_idx--;
 
 
 
