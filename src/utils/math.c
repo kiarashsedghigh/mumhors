@@ -10,8 +10,10 @@ int min(int x, int y) {
 int count_num_set_bits(int num) {
     int cnt = 0;
     while (num) {
-        cnt += num & 1;
-        num >>= 1;
+        num &= num - 1;
+        cnt += 1;
+        // cnt += num & 1;
+        // num >>= 1;
     }
     return cnt;
 }

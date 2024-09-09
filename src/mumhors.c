@@ -11,6 +11,9 @@
 #include <tomcrypt.h>
 #include <sys/time.h>
 
+int aes_encrypt(unsigned char *ciphertext, unsigned char *plaintext, int plaintext_len);
+
+
 #ifdef JOURNAL
 /* Timing variables */
 static struct timeval start_time, end_time;
@@ -45,8 +48,22 @@ void mumhors_pk_gen(public_key_matrix_t *pk_matrix, const unsigned char *seed, i
             memcpy(new_seed, seed, seed_len);
             memcpy(new_seed + seed_len, &i, 4);
             memcpy(new_seed + seed_len + 4, &j, 4);
+
+            // PRF()
+            // printf("SEED %d\n", seed_len);
+            // aes_encrypt(sk, new_seed, seed_len + 4 + 4);
+
+            // for(int i=0; i<16;i++)
+            //     printf("%0.2x ", sk[i]);
+            // printf("\n");
+
+            // blake2s_128(sk, new_seed, seed_len + 4 + 4);
+            // aes_ecb_encrypt()
+
+            // F()
             blake2b_256(sk, new_seed, seed_len + 4 + 4);
             blake2b_256(pk, sk, SHA256_OUTPUT_LEN);
+
             pk_node->pks[j] = malloc(sizeof(public_key_t)); //TODO delete when removing
             pk_node->pks[j]->public_key = pk;
             pk_node->pks[j]->type = MUM_PK_VALID;

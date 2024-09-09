@@ -94,9 +94,10 @@ int main(int argc, char **argv) {
         // }
 
         if (mumhors_verify_signature(&verifier, &signer.signature, message, SHA256_OUTPUT_LEN) ==
-            VERIFY_SIGNATURE_INVALID)
+            VERIFY_SIGNATURE_INVALID) {
             cnt_rejected_message_signatures++;
 
+        }
         /* Generate the next message */
         blake2b_256(message, message, SHA256_OUTPUT_LEN);
     }
