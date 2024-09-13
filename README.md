@@ -47,12 +47,12 @@ cd buid
 ```
 with bitmap as linked list:
 ```
-cmake -S .. -B . -DCMAKE_C_FLAGS="-DBITMAP_LIST"
+cmake -S .. -B . -DCMAKE_C_FLAGS="-O3 -w -DBITMAP_LIST"
 make
 ```
 with bitmap as array:
 ```
-cmake -S .. -B . -DCMAKE_C_FLAGS="-DBITMAP_ARRAY -DROW_THRESHOLD=RT -DBIT_VECTOR=VECTOR_SIZE"
+cmake -S .. -B . -DCMAKE_C_FLAGS="-O3 -w -DBITMAP_ARRAY -DROW_THRESHOLD=RT -DBIT_VECTOR=VECTOR_SIZE"
 make
 ```
 where `VECTOR_SIZE` is in bits.
@@ -72,7 +72,7 @@ seed file manually if no exists.
 # Example
 ## Build
 ```
-cmake -S .. -B . -DCMAKE_C_FLAGS="-DJOURNAL -DBITMAP_ARRAY -DROW_THRESHOLD=11 -DBIT_VECTOR=1024"
+cmake -S .. -B . -DCMAKE_C_FLAGS="-O3 -w -DJOURNAL -DBITMAP_ARRAY -DROW_THRESHOLD=11 -DBIT_VECTOR=1024"
 make
 ```
 

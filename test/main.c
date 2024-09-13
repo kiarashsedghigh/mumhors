@@ -88,16 +88,17 @@ int main(int argc, char **argv) {
 
         /* (Optional) Specify the messages to be corrupted. Either the message or its signature,
          * not both at the same time */
-        // if(message_index == 0 || message_index==78) {
-        // // signer.signature.signature[0] = 0x12;
-        // message[0] = 0xff;
+        // if(message_index == 5 || message_index == 16 || message_index == 27 || message_index == 78) {
+        //     // signer.signature.signature[0] = 0x12;
+        //     message[0] = 0xff;
         // }
 
         if (mumhors_verify_signature(&verifier, &signer.signature, message, SHA256_OUTPUT_LEN) ==
             VERIFY_SIGNATURE_INVALID) {
             cnt_rejected_message_signatures++;
-
         }
+
+
         /* Generate the next message */
         blake2b_256(message, message, SHA256_OUTPUT_LEN);
     }

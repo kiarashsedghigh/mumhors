@@ -49,18 +49,6 @@ void mumhors_pk_gen(public_key_matrix_t *pk_matrix, const unsigned char *seed, i
             memcpy(new_seed + seed_len, &i, 4);
             memcpy(new_seed + seed_len + 4, &j, 4);
 
-            // PRF()
-            // printf("SEED %d\n", seed_len);
-            // aes_encrypt(sk, new_seed, seed_len + 4 + 4);
-
-            // for(int i=0; i<16;i++)
-            //     printf("%0.2x ", sk[i]);
-            // printf("\n");
-
-            // blake2s_128(sk, new_seed, seed_len + 4 + 4);
-            // aes_ecb_encrypt()
-
-            // F()
             blake2b_256(sk, new_seed, seed_len + 4 + 4);
             blake2b_256(pk, sk, SHA256_OUTPUT_LEN);
 
@@ -223,6 +211,7 @@ static int check_rejection_sampling(const unsigned char *message, int message_le
 
     return 0;
 }
+
 
 int mumhors_sign_message(mumhors_signer_t *signer, const unsigned char *message, int message_len) {
     unsigned char *new_seed = malloc(signer->seed_len + 4 + 4);
@@ -417,31 +406,8 @@ static int mumhors_verifier_alloc_row_virtually(mumhors_verifier_t *verifier) {
     return PKMATRIX_MORE_ROW_ALLOCATION_SUCCESS;
 }
 
-
-static void debug_pk(mumhors_verifier_t *verifier) {
-    public_key_row_t *pk_row_start = verifier->pk_matrix.head;;
-
-    int rt = 11;
-    while (rt) {
-        for (int i = 0; i < 1024; i++) {
-            if (pk_row_start->pks[i]->type == MUM_PK_VALID)
-                printf(".");
-            else if (pk_row_start->pks[i]->type == MUM_PK_INVALID)
-                printf("X");
-            else
-                printf("*");
-        }
-        printf("\n");
-        pk_row_start = pk_row_start->next;
-
-
-        rt--;
-    }
-}
-
-
 static void change_pk_status_from_doubt(mumhors_verifier_t *verifier, public_key_row_t *end_row, int end_col,
-                                        int status) {
+                                        int status, int cnt_pks) {
     public_key_row_t *start_row = verifier->pk_matrix.head;
 
     /* Maximum index that we can iterate in each row */
@@ -455,12 +421,17 @@ static void change_pk_status_from_doubt(mumhors_verifier_t *verifier, public_key
 
         for (int i = 0; i < end_col_index; i++) {
             if (start_row->pks[i]->type == MUM_PK_DOUBT) {
-                start_row->pks[i]->type = status;
-                start_row->doubt_pks--;
 
-                if (status == MUM_PK_INVALID) {
-                    start_row->available_pks--;
-                    verifier->active_pks--;
+                if (cnt_pks) {
+                    start_row->pks[i]->type = status;
+                    start_row->doubt_pks--;
+
+                    if (status == MUM_PK_INVALID) {
+                        start_row->available_pks--;
+                        verifier->active_pks--;
+                    }
+
+                    cnt_pks--;
                 }
             }
         }
@@ -512,7 +483,8 @@ static int verify_signature_using_virtual_matrix(mumhors_verifier_t *verifier, c
     /* We check which private keys of the signature are verified and which are not. Those that are not verified or not
      * have been marked as *, will be iterated over the public key matrix to be found and possibly removed */
     int *pk_ver_status = malloc(sizeof(int) * verifier->k);
-
+    for(int i=0 ; i< verifier->k; i++)  /* Zeroing out the signature validity */
+        pk_ver_status[i] = 0;
 
     /* A buffer for extracting the private key from the signature */
     unsigned char *sk = malloc(verifier->l / 8);
@@ -559,8 +531,6 @@ static int verify_signature_using_virtual_matrix(mumhors_verifier_t *verifier, c
             target_index -= pk_row_start->available_pks;
             cnt_doubt_pk += pk_row_start->doubt_pks;
             cnt_valid_pk += pk_row_start->available_pks - pk_row_start->doubt_pks;
-            /* Valid pks include both real valid and doubt ones */
-            //todo change above
             pk_row_start = pk_row_start->next;
         }
 
@@ -577,11 +547,15 @@ static int verify_signature_using_virtual_matrix(mumhors_verifier_t *verifier, c
                 target_index--;
                 if (pk_row_start->pks[j]->type == MUM_PK_DOUBT)
                     cnt_doubt_pk++;
+                else if (pk_row_start->pks[j]->type == MUM_PK_VALID)
+                    cnt_valid_pk++;
             }
         }
 
         /* Compare the hash with the current public key*/
         if (strncmp(target_pk->public_key, sk_hash, SHA256_OUTPUT_LEN) != 0) {
+
+
             /* Signature is not validated. Make this public key as not verified but to be marked as *(questionable) */
             pk_rows_nv2q[nv2qidx] = pk_row_start;
             pk_index_nv2q[nv2qidx++] = found_column;
@@ -597,16 +571,9 @@ static int verify_signature_using_virtual_matrix(mumhors_verifier_t *verifier, c
             /* Number of further public keys to check which is maximum the number public keys we have doubt about */
             int cnt_next_pks_to_check = cnt_doubt_pk;
 
-
-            // int temp_doubt = 0;
-
             while (pk_row_start) {
                 for (int k = found_column; k < verifier->c; k++) {
                     if (pk_row_start->pks[k]->type != MUM_PK_INVALID) {
-                        // if (pk_row_start->pks[k]->type == MUM_PK_DOUBT) {
-                        //     temp_doubt++;
-                        // }
-
                         if (!cnt_next_pks_to_check)
                             goto reject_signature;
                         cnt_next_pks_to_check--;
@@ -617,15 +584,11 @@ static int verify_signature_using_virtual_matrix(mumhors_verifier_t *verifier, c
                             pk_rows_v2d[v2didx] = pk_row_start;
                             pk_index_v2d[v2didx++] = k;
 
-
                             /* If all the * public keys were needed to be passed to reach the correct one, this
                              * indicates that all of them had been removed before by the signer. So, mark them as deleted.
                              */
-                            if (cnt_next_pks_to_check == 0) {
-                                // change_pk_status_from_doubt(verifier, pk_row_start, k, MUM_PK_INVALID);
-
-                                nv2qidx--;
-                            }
+                            change_pk_status_from_doubt(verifier, pk_row_start, k, MUM_PK_INVALID , cnt_doubt_pk - cnt_next_pks_to_check);
+                            nv2qidx--;
 
                             goto accept_signature;
                         }
@@ -650,8 +613,7 @@ static int verify_signature_using_virtual_matrix(mumhors_verifier_t *verifier, c
 
             /* Given verified sj and sj', if there are j'-j public keys in between, mark all as valid */
             if (cnt_doubt_pk + cnt_valid_pk == sorted_indices[i])
-                change_pk_status_from_doubt(verifier, pk_row_start, found_column,MUM_PK_VALID);
-            // make_pk_valid(verifier, pk_row_start, found_column);
+                change_pk_status_from_doubt(verifier, pk_row_start, found_column,MUM_PK_VALID, cnt_doubt_pk); //todo
         }
     }
 
@@ -687,7 +649,6 @@ static int verify_signature_using_virtual_matrix(mumhors_verifier_t *verifier, c
             pk_remove_signature(verifier, sk_hash);
         }
     }
-
 #ifdef JOURNAL
     gettimeofday(&end_time, NULL);
     mumhors_verify_time += (end_time.tv_sec - start_time.tv_sec) + (end_time.tv_usec - start_time.tv_usec) / 1.0e6;
