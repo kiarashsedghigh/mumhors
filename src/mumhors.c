@@ -448,19 +448,42 @@ static void pk_remove_signature(mumhors_verifier_t *verifier, unsigned char *sk_
     while (rt && start_row) {
         for (int i = 0; i < verifier->c; i++) {
             if (strncmp(start_row->pks[i]->public_key, sk_hash, SHA256_OUTPUT_LEN) == 0) {
-                start_row->available_pks--;
-                verifier->active_pks--;
-                start_row->pks[i]->type = MUM_PK_INVALID;
-                // todo check for doubt
+                if (start_row->pks[i]->type == MUM_PK_DOUBT)
+                    start_row->doubt_pks--;
+
+                if (start_row->pks[i]->type != MUM_PK_INVALID) {
+                    start_row->available_pks--;
+                    verifier->active_pks--;
+                    start_row->pks[i]->type = MUM_PK_INVALID;
+                }
             }
         }
-
         start_row = start_row->next;
         rt--;
     }
 }
 
+static void debug_pk(mumhors_verifier_t *verifier) {
+    public_key_row_t *pk_row_start = verifier->pk_matrix.head;;
 
+    int rt = 11;
+    while (rt) {
+        printf("%d:%d ",pk_row_start->doubt_pks, pk_row_start->available_pks);
+        for (int i = 0; i < 1024; i++) {
+            if (pk_row_start->pks[i]->type == MUM_PK_VALID)
+                printf(".");
+            else if (pk_row_start->pks[i]->type == MUM_PK_INVALID)
+                printf("X");
+            else
+                printf("*");
+        }
+        printf("\n");
+        pk_row_start = pk_row_start->next;
+
+
+        rt--;
+    }
+}
 static int verify_signature_using_virtual_matrix(mumhors_verifier_t *verifier, const int *indices, int num_indices,
                                                  const unsigned char *signature) {
     if (verifier->windows_size > verifier->active_pks) {
@@ -620,8 +643,13 @@ static int verify_signature_using_virtual_matrix(mumhors_verifier_t *verifier, c
     /* Mark all the public keys that have to be marked as question */
     for (int i = 0; i < nv2qidx; i++) {
         if (pk_rows_nv2q[i] != NULL) {
+
+            if (pk_rows_nv2q[i]->pks[pk_index_nv2q[i]]->type != MUM_PK_DOUBT)
+                pk_rows_nv2q[i]->doubt_pks++;
+
             pk_rows_nv2q[i]->pks[pk_index_nv2q[i]]->type = MUM_PK_DOUBT;
-            pk_rows_nv2q[i]->doubt_pks++;
+
+
         }
     }
 
@@ -630,9 +658,12 @@ static int verify_signature_using_virtual_matrix(mumhors_verifier_t *verifier, c
         if (pk_rows_v2d[i]->pks[pk_index_v2d[i]]->type == MUM_PK_DOUBT)
             pk_rows_v2d[i]->doubt_pks--;
 
-        pk_rows_v2d[i]->pks[pk_index_v2d[i]]->type = MUM_PK_INVALID;
-        pk_rows_v2d[i]->available_pks--;
-        verifier->active_pks--;
+        if (pk_rows_v2d[i]->pks[pk_index_v2d[i]]->type != MUM_PK_INVALID) {
+            pk_rows_v2d[i]->pks[pk_index_v2d[i]]->type = MUM_PK_INVALID;
+            pk_rows_v2d[i]->available_pks--;
+            verifier->active_pks--;
+        }
+
     }
 
     /* Try to delete all the public keys that were not marked as * or were not deleted */
@@ -649,6 +680,8 @@ static int verify_signature_using_virtual_matrix(mumhors_verifier_t *verifier, c
             pk_remove_signature(verifier, sk_hash);
         }
     }
+    debug_pk(verifier);
+    printf("\n");
 #ifdef JOURNAL
     gettimeofday(&end_time, NULL);
     mumhors_verify_time += (end_time.tv_sec - start_time.tv_sec) + (end_time.tv_usec - start_time.tv_usec) / 1.0e6;
