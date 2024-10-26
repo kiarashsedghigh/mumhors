@@ -65,26 +65,8 @@ static void insertion_sort_desc(int* arr, const int n) {
     }
 }
 
-static void insertion_sort_asc(int* arr, const int n) {
-    for (int i = 1; i < n; i++) {
-        int key = arr[i];
-        int j = i - 1;
-
-        while (j >= 0 && arr[j] > key) {
-            arr[j + 1] = arr[j];
-            j = j - 1;
-        }
-
-        arr[j + 1] = key;
-    }
-}
-
-void array_sort_desc(int* arr, const int n) {
+void array_sort(int* arr, const int n) {
     insertion_sort_desc(arr, n);
     // merge_sort_desc(arr, 0, n - 1);
 }
 
-void array_sort_asc(int* arr, const int n) {
-    insertion_sort_asc(arr, n);
-    // merge_sort_desc(arr, 0, n - 1);
-}
