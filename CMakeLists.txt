@@ -5,16 +5,12 @@ set(CMAKE_CXX_STANDARD 23)
 
 include_directories(src src/utils src/crypto)
 
-
-#set(CMAKE_CXX_FLAGS_RELEASE "-Os -ffunction-sections -fdata-sections -flto -DNDEBUG")
-#set(CMAKE_C_FLAGS_RELEASE "-Os -ffunction-sections -fdata-sections -flto -DNDEBUG")
-#set(CMAKE_EXE_LINKER_FLAGS_RELEASE "-s -Wl,--gc-sections")
-
 link_libraries(tomcrypt m ssl crypto)
 
 # Add executable
 add_executable(mumhors
         README.md
+        test/seed_file
         test/main.c
         src/utils/bitmap.c
         src/utils/bitmap.h
