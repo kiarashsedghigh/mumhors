@@ -14,21 +14,6 @@ public keys, is maximum. This project introduces a novel bitmap data structure d
 
 Each implementation `(src/utils/bitmap.c)` is tailored to different use cases, offering flexibility depending on the system's requirements.
 
-### Bitmap Variants
-
-#### 1. Linked List Bitmap
-The linked list variant of the bitmap is designed for scenarios where dynamic resizing and flexibility are crucial. Each bit represents a key in the HORS signature scheme, and the linked list structure allows for efficient key addition, deletion, and management without the overhead of shifting elements. This makes it ideal for environments where keys are frequently added or removed.
-
-- **Key Features:**
-    - Dynamic size adjustment.
-
-#### 2. Circular Queue Bitmap
-The circular queue variant is optimized for scenarios where a fixed number of keys are managed
-- **Key Features:**
-    - Fixed-size structure for predictable memory usage.
-
-
-
 ## Requirements
 Before you begin, ensure you have met the following requirements:
 - **Libtomcrypt**: v1.18.2 or higher
